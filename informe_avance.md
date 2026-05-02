@@ -33,7 +33,9 @@ Para que una red neuronal aprenda a reconocer huesos, primero necesita miles de 
 Actualmente, el corazón del proyecto está en plena ejecución dentro del clúster supercomputacional (OroVerde) de la Universidad.
 
 * **La Arquitectura (UNet3D):** Estamos utilizando una Red Neuronal Convolucional 3D. Imaginemos a la red como un estudiante que mira un cubito de rayos X, intenta adivinar qué píxeles son hueso, y luego compara su respuesta con la solución correcta.
-* **El Aprendizaje (Dice Loss):** Cada vez que la red se equivoca, una función matemática llamada *Dice Loss* (Pérdida de Dice) calcula el error. La red ajusta sus más de 1.4 millones de parámetros internos para intentar equivocarse un poco menos la próxima vez. 
+* **El Aprendizaje (Dice Loss):** Cada vez que la red evalúa un lote de parches, cuantifica su propio error utilizando una versión matemáticamente diferenciable del Coeficiente de Sørensen-Dice. Esta pérdida ($\mathcal{L}_{Dice}$) se define como:
+  $$ \mathcal{L}_{Dice} = 1 - \frac{2 \sum_{i=1}^{N} p_i g_i + \epsilon}{\sum_{i=1}^{N} p_i + \sum_{i=1}^{N} g_i + \epsilon} $$
+  Donde $N$ es el total de vóxeles, $p_i$ es la probabilidad continua que predice la IA (0 a 1), $g_i$ es el ground truth binario real (0 o 1), y $\epsilon$ es una constante de suavizado para evitar discontinuidades. Minimizando analíticamente este valor mediante derivadas parciales (Backpropagation), la red ajusta sus más de 1.4 millones de parámetros internos.
 * Este proceso se repetirá 50 veces (50 épocas) a lo largo de varios días utilizando 12 núcleos de procesamiento al máximo de su capacidad.
 
 ### Fase 3: Proyección Física y COMSOL (Próximos Pasos)
