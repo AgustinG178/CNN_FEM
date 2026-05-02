@@ -1,0 +1,19 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Carpetas de datos pesados (NUNCA SUBIR A GITHUB)
+data/
+04_training_patches/
+*.npy
+*.dcm
+*.nii.gz
+*.pth
+
+# Logs y basura de ejecución
+logs/
+*.log
+*.err
+__pycache__/
+*.pyc

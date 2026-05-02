@@ -1,0 +1,9 @@
+torch
+torchio
+Deprecated
+numpy
+tqdm
+nibabel
+scipy
+pydicom
+scikit-image
