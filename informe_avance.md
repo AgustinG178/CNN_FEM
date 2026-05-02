@@ -98,21 +98,21 @@ Desde la perspectiva de la teoría de optimización convexa local, la curva de a
 Asumiendo que el optimizador (Adam) está minimizando la esperanza matemática de la pérdida a lo largo de las $t$ épocas, el comportamiento asintótico de $\mathcal{L}_{Dice}(t)$ se puede modelar analíticamente como una suma de decaimientos:
 
 $$
-\mathcal{L}(t) \approx \mathcal{L}^* + \sum_{k=1}^{K} C_k \exp(-\lambda_k t)
+\mathcal{L}(t) \approx \mathcal{L}^{\ast} + \sum_{k=1}^{K} C_k \exp(-\lambda_k t)
 $$
 
 Donde:
-* $\mathcal{L}^*$ es el mínimo global asintótico (la máxima precisión posible de la red).
+* $\mathcal{L}^{\ast}$ es el mínimo global asintótico (la máxima precisión posible de la red).
 * $C_k$ son constantes que dependen de la inicialización aleatoria de los pesos.
 * $\lambda_k$ representa los autovalores (eigenvalues) de la matriz Hessiana en el espacio de parámetros, dictando la tasa de convergencia en distintas direcciones del gradiente.
 
 Adicionalmente, desde la perspectiva probabilística de Máxima Verosimilitud (MLE), el entrenamiento busca maximizar la probabilidad conjunta del dataset asumiendo muestras independientes (productoria), lo que al aplicar el logaritmo negativo se transforma en la sumatoria que la red minimiza:
 
 $$
-\theta^* = \arg\max_{\theta} \prod_{j=1}^{M} P(Y_j | X_j; \theta) \implies \arg\min_{\theta} \left( - \sum_{j=1}^{M} \log P(Y_j | X_j; \theta) \right)
+\theta^{\ast} = \arg\max_{\theta} \prod_{j=1}^{M} P(Y_j | X_j; \theta) \implies \arg\min_{\theta} \left( - \sum_{j=1}^{M} \log P(Y_j | X_j; \theta) \right)
 $$
 
-Esta formulación justifica matemáticamente por qué las primeras épocas ($t$ pequeño) presentan caídas drásticas impulsadas por los $\lambda_k$ más grandes, mientras que para $t \to 50$, el decaimiento se aplana dominado por los autovalores más pequeños, acercándose de forma asintótica a $\mathcal{L}^*$.
+Esta formulación justifica matemáticamente por qué las primeras épocas ($t$ pequeño) presentan caídas drásticas impulsadas por los $\lambda_k$ más grandes, mientras que para $t \to 50$, el decaimiento se aplana dominado por los autovalores más pequeños, acercándose de forma asintótica a $\mathcal{L}^{\ast}$.
 
 ### Justificación del Criterio de Parada: ¿Por qué 50 épocas y no un millón?
 Una duda legítima desde la ingeniería tradicional sería: *"Si el error baja con cada época, ¿por qué no dejar la computadora calculando 100.000 épocas hasta que el error sea exactamente cero?"*
@@ -168,18 +168,18 @@ $$
 *(Donde $Z = e^{-C}$ actúa como la función de partición normalizadora).*
 
 ### 2. Aproximación Topológica Cuadrática
-En las proximidades del mínimo ideal de la red ($\theta^*$), el colector de la función de pérdida puede aproximarse mediante Series de Taylor como un paraboloide regido por la Matriz Hessiana ($H$):
+En las proximidades del mínimo ideal de la red ($\theta^{\ast}$), el colector de la función de pérdida puede aproximarse mediante Series de Taylor como un paraboloide regido por la Matriz Hessiana ($H$):
 
-$$ \mathcal{L}(\theta) \approx \frac{1}{2} (\theta - \theta^*)^T H (\theta - \theta^*) $$
+$$ \mathcal{L}(\theta) \approx \frac{1}{2} (\theta - \theta^{\ast})^T H (\theta - \theta^{\ast}) $$
 
 Sustituyendo esto en nuestra solución general, obtenemos la distribución analítica final de los pesos de la UNet3D:
 
 $$
-p_{ss}(\theta) = \frac{1}{Z} \exp\left( - \frac{(\theta - \theta^*)^T H (\theta - \theta^*)}{2 \eta \mathbf{D}} \right)
+p_{ss}(\theta) = \frac{1}{Z} \exp\left( - \frac{(\theta - \theta^{\ast})^T H (\theta - \theta^{\ast})}{2 \eta \mathbf{D}} \right)
 $$
 
 ### 3. Conclusión y Justificación
-La solución exacta de la EDP de Fokker-Planck nos demuestra que **los pesos de la red convergen hacia una Distribución Gaussiana Multivariada** ($\mathcal{N}(\theta^*, \eta \mathbf{D} H^{-1})$).
+La solución exacta de la EDP de Fokker-Planck nos demuestra que **los pesos de la red convergen hacia una Distribución Gaussiana Multivariada** ($\mathcal{N}(\theta^{\ast}, \eta \mathbf{D} H^{-1})$).
 
 **¿Qué significa esto físicamente para nuestro problema médico?**
 Demuestra que, gracias al ruido $\mathbf{D}$ de los minilotes de parches y a la tasa $\eta$, los pesos de la red **nunca se congelan estáticamente en el mínimo absoluto**, sino que "vibran" permanentemente en un equilibrio termodinámico alrededor del óptimo. Esta vibración matemática demostrada por la solución de la EDP es la que impide que la red pueda memorizar rígidamente los 61 pacientes.
