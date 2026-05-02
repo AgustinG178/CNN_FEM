@@ -46,9 +46,12 @@ Una vez que el clúster nos devuelva el "cerebro" entrenado (un archivo `.pth`),
      $$\rho = a \times \text{HU} + b$$
    * **Módulo de Young / Elasticidad ($E$):** Relación potencial basada en la densidad calculada, permitiendo modelar hueso trabecular y cortical.
      $$E = C \times \rho^n$$
-   *(Donde $$a, b, C, n$$ son constantes de calibración definidas empíricamente).*
+   *(Donde $a, b, C, n$ son constantes de calibración definidas empíricamente).*
    Esto le asignará a cada elemento o "pedacito" de hueso una rigidez específica.
-4. **Exportación a COMSOL:** El modelo biomecánico completo será importado a COMSOL para simular cargas, presiones o roturas físicas.
+4. **Exportación a COMSOL y Solución PDE:** El modelo biomecánico heterogéneo (donde cada zona del hueso tiene un $E$ distinto) será importado a COMSOL Multiphysics. Utilizando este Módulo de Young para componer el tensor de rigidez $\mathbb{C}$ en la Ley de Hooke generalizada ($\sigma = \mathbb{C} : \varepsilon$), el software resolverá numéricamente las **Ecuaciones en Derivadas Parciales (PDEs) de Navier-Cauchy para Elastostática**:
+   $$ \nabla \cdot \sigma + \mathbf{f} = 0 $$
+   *(Donde $\sigma$ es el tensor de tensiones y $\mathbf{f}$ representa las fuerzas o cargas aplicadas).*
+   Esto nos permitirá simular con rigor matemático el comportamiento del hueso bajo cargas, predecir puntos de fatiga o analizar riesgo de fracturas.
 
 ---
 
