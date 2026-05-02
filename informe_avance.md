@@ -34,10 +34,10 @@ Actualmente, el corazón del proyecto está en plena ejecución dentro del clús
 
 * **La Arquitectura (UNet3D):** Estamos utilizando una Red Neuronal Convolucional 3D. Imaginemos a la red como un estudiante que mira un cubito de rayos X, intenta adivinar qué píxeles son hueso, y luego compara su respuesta con la solución correcta.
 * **El Aprendizaje (Dice Loss):** Cada vez que la red evalúa un lote de parches, cuantifica su propio error utilizando una versión matemáticamente diferenciable del Coeficiente de Sørensen-Dice. Esta pérdida ($\mathcal{L}_{Dice}$) se define como:
-  
-  $$
-  \mathcal{L}_{Dice} = 1 - \frac{2 \sum_{i=1}^{N} p_i g_i + \epsilon}{\sum_{i=1}^{N} p_i + \sum_{i=1}^{N} g_i + \epsilon}
-  $$
+
+$$
+\mathcal{L}_{Dice} = 1 - \frac{2 \sum_{i=1}^{N} p_i g_i + \epsilon}{\sum_{i=1}^{N} p_i + \sum_{i=1}^{N} g_i + \epsilon}
+$$
 
   Donde $N$ es el total de vóxeles, $p_i$ es la probabilidad continua que predice la IA (0 a 1), $g_i$ es el ground truth binario real (0 o 1), y $\epsilon$ es una constante de suavizado para evitar discontinuidades. Minimizando analíticamente este valor mediante derivadas parciales (Backpropagation), la red ajusta sus más de 1.4 millones de parámetros internos.
 * Este proceso se repetirá 50 veces (50 épocas) a lo largo de varios días utilizando 12 núcleos de procesamiento al máximo de su capacidad.
@@ -49,24 +49,25 @@ Una vez que el clúster nos devuelva el "cerebro" entrenado (un archivo `.pth`),
 2. **Generación de Mallas (Meshing):** Convertiremos los píxeles identificados por la IA en una malla 3D (formato STL).
 3. **Mapeo de Materiales (Propiedades Biomecánicas):** El software cruzará la malla con la densidad radiológica (Unidades Hounsfield o HU) original. Basados en la literatura biomecánica estándar (e.g., Carter & Hayes, Rho), el código traducirá la escala de grises a propiedades físicas en dos pasos:
    * **Densidad Aparente ($\rho$):** Relación lineal con las Unidades Hounsfield.
-     
-     $$
-     \rho = a \times \text{HU} + b
-     $$
-     
+
+$$
+\rho = a \times \text{HU} + b
+$$
+
    * **Módulo de Young / Elasticidad ($E$):** Relación potencial basada en la densidad calculada, permitiendo modelar hueso trabecular y cortical.
-     
-     $$
-     E = C \times \rho^n
-     $$
+
+$$
+E = C \times \rho^n
+$$
+
    *(Donde $a, b, C, n$ son constantes de calibración definidas empíricamente).*
    Esto le asignará a cada elemento o "pedacito" de hueso una rigidez específica.
 4. **Exportación a COMSOL y Solución PDE:** El modelo biomecánico heterogéneo (donde cada zona del hueso tiene un $E$ distinto) será importado a COMSOL Multiphysics. Utilizando este Módulo de Young para componer el tensor de rigidez $\mathbb{C}$ en la Ley de Hooke generalizada ($\sigma = \mathbb{C} : \varepsilon$), el software resolverá numéricamente las **Ecuaciones en Derivadas Parciales (PDEs) de Navier-Cauchy para Elastostática**:
-   
-   $$
-   \nabla \cdot \sigma + \mathbf{f} = 0
-   $$
-   
+
+$$
+\nabla \cdot \sigma + \mathbf{f} = 0
+$$
+
    *(Donde $\sigma$ es el tensor de tensiones y $\mathbf{f}$ representa las fuerzas o cargas aplicadas).*
    Esto nos permitirá simular con rigor matemático el comportamiento del hueso bajo cargas, predecir puntos de fatiga o analizar riesgo de fracturas.
 
