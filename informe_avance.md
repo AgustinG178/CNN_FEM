@@ -91,3 +91,25 @@ A la fecha de redacción de este informe, el modelo se encuentra en su fase de e
 | **4** | *Pendiente* | *Pendiente* | *Pendiente* |
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
+
+### Modelo Analítico de Convergencia
+Desde la perspectiva de la teoría de optimización convexa local, la curva de aprendizaje empírica no es lineal, sino que obedece a una dinámica de decaimiento exponencial a medida que el optimizador desciende por el colector topológico (Manifold) de la función de pérdida. 
+
+Asumiendo que el optimizador (Adam) está minimizando la esperanza matemática de la pérdida a lo largo de las $t$ épocas, el comportamiento asintótico de $\mathcal{L}_{Dice}(t)$ se puede modelar analíticamente como una suma de decaimientos:
+
+$$
+\mathcal{L}(t) \approx \mathcal{L}^* + \sum_{k=1}^{K} C_k \exp(-\lambda_k t)
+$$
+
+Donde:
+* $\mathcal{L}^*$ es el mínimo global asintótico (la máxima precisión posible de la red).
+* $C_k$ son constantes que dependen de la inicialización aleatoria de los pesos.
+* $\lambda_k$ representa los autovalores (eigenvalues) de la matriz Hessiana en el espacio de parámetros, dictando la tasa de convergencia en distintas direcciones del gradiente.
+
+Adicionalmente, desde la perspectiva probabilística de Máxima Verosimilitud (MLE), el entrenamiento busca maximizar la probabilidad conjunta del dataset asumiendo muestras independientes (productoria), lo que al aplicar el logaritmo negativo se transforma en la sumatoria que la red minimiza:
+
+$$
+\theta^* = \arg\max_{\theta} \prod_{j=1}^{M} P(Y_j | X_j; \theta) \implies \arg\min_{\theta} \left( - \sum_{j=1}^{M} \log P(Y_j | X_j; \theta) \right)
+$$
+
+Esta formulación justifica matemáticamente por qué las primeras épocas ($t$ pequeño) presentan caídas drásticas impulsadas por los $\lambda_k$ más grandes, mientras que para $t \to 50$, el decaimiento se aplana dominado por los autovalores más pequeños, acercándose de forma asintótica a $\mathcal{L}^*$.
