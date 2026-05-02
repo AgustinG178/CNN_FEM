@@ -88,7 +88,7 @@ A la fecha de redacción de este informe, el modelo se encuentra en su fase de e
 | **1** | 0.611 | 38.9% | - |
 | **2** | 0.501 | 49.9% | -0.110 |
 | **3** | 0.458 | 54.2% | -0.043 |
-| **4** | *Pendiente* | *Pendiente* | *Pendiente* |
+| **4** | 0.443 | 55.7% | -0.016 |
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
 
