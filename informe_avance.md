@@ -164,6 +164,7 @@ Despejando mediante la función exponencial:
 $$
 p_{ss}(\theta) = \frac{1}{Z} \exp\left( - \frac{\mathcal{L}(\theta)}{\eta \mathbf{D}} \right)
 $$
+
 *(Donde $Z = e^{-C}$ actúa como la función de partición normalizadora).*
 
 ### 2. Aproximación Topológica Cuadrática
