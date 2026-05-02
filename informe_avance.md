@@ -113,3 +113,17 @@ $$
 $$
 
 Esta formulación justifica matemáticamente por qué las primeras épocas ($t$ pequeño) presentan caídas drásticas impulsadas por los $\lambda_k$ más grandes, mientras que para $t \to 50$, el decaimiento se aplana dominado por los autovalores más pequeños, acercándose de forma asintótica a $\mathcal{L}^*$.
+
+### Justificación del Criterio de Parada: ¿Por qué 50 épocas y no un millón?
+Una duda legítima desde la ingeniería tradicional sería: *"Si el error baja con cada época, ¿por qué no dejar la computadora calculando 100.000 épocas hasta que el error sea exactamente cero?"*
+
+La respuesta radica en un fenómeno crítico del Machine Learning llamado **Sobreajuste (Overfitting)**. 
+
+Para entenderlo, imaginemos a la Inteligencia Artificial como un estudiante universitario preparándose para un examen final:
+1. Si estudia muy poco (ej. 5 épocas), reprobará porque no entendió los conceptos básicos (*Underfitting*).
+2. Si estudia el tiempo adecuado (ej. 50 épocas), entenderá la lógica general de la anatomía y podrá resolver exámenes con tomografías de pacientes que **nunca ha visto antes** (*Generalización*).
+3. Si lo obligamos a estudiar el mismo libro un millón de veces, el estudiante dejará de razonar y empezará a **memorizar de memoria las respuestas** píxel por píxel. 
+
+Si entrenáramos nuestra red por 100.000 épocas, el error matemático en nuestra base de datos pública llegaría a $0.00$. Pero el día de mañana, cuando ingresemos la tomografía de un paciente real de la clínica local (que tiene una forma ósea ligeramente distinta), el modelo fallará catastróficamente porque perdió su capacidad de generalizar y solo sabe resolver los 61 casos que memorizó.
+
+El límite empírico de **50 épocas** fue establecido por diseño tras analizar la curva exponencial de convergencia: es el punto dulce ("Sweet Spot") matemático donde el modelo alcanza su máxima inteligencia espacial justo antes de comenzar a memorizar los datos crudos.
