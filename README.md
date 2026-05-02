@@ -49,8 +49,8 @@ Este pipeline está fuertemente optimizado para ser ejecutado en nodos de superc
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone https://github.com/TU_USUARIO/TU_REPOSITORIO.git
-   cd TU_REPOSITORIO
+   git clone https://github.com/AgustinG178/CNN_FEM.git
+   cd CNN_FEM
    ```
 
 2. **Instalar Dependencias:**
@@ -65,5 +65,5 @@ Este pipeline está fuertemente optimizado para ser ejecutado en nodos de superc
    ```
    Puedes monitorear el progreso y la caída de la función de pérdida matemática (*Dice Loss*) utilizando:
    ```bash
-   tail -f logs/entrenamiento_*.log
+   tail -f logs/entrenamiento_[#Reemplazar el '#' con el id asignado por SLURM en la salida del comando anterior, e.g., 92456, esto puede visualizarse usando el comando "squeue" para ver la lista completa o "squeue -u $USER" para rastear el usuario concreto que se busca, en este caso el nuestro].log
    ```
