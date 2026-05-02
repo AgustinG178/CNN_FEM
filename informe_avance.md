@@ -46,7 +46,7 @@ Una vez que el clúster nos devuelva el "cerebro" entrenado (un archivo `.pth`),
      $$\rho = a \times \text{HU} + b$$
    * **Módulo de Young / Elasticidad ($E$):** Relación potencial basada en la densidad calculada, permitiendo modelar hueso trabecular y cortical.
      $$E = C \times \rho^n$$
-   *(Donde $a, b, C, n$ son constantes de calibración definidas empíricamente).*
+   *(Donde $$a, b, C, n$$ son constantes de calibración definidas empíricamente).*
    Esto le asignará a cada elemento o "pedacito" de hueso una rigidez específica.
 4. **Exportación a COMSOL:** El modelo biomecánico completo será importado a COMSOL para simular cargas, presiones o roturas físicas.
 
