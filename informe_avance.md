@@ -169,6 +169,7 @@ $$
 
 ### 2. Aproximación Topológica Cuadrática
 En las proximidades del mínimo ideal de la red ($\theta^*$), el colector de la función de pérdida puede aproximarse mediante Series de Taylor como un paraboloide regido por la Matriz Hessiana ($H$):
+
 $$ \mathcal{L}(\theta) \approx \frac{1}{2} (\theta - \theta^*)^T H (\theta - \theta^*) $$
 
 Sustituyendo esto en nuestra solución general, obtenemos la distribución analítica final de los pesos de la UNet3D:
