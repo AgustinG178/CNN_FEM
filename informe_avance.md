@@ -85,9 +85,9 @@ A la fecha de redacción de este informe, el modelo se encuentra en su fase de e
 
 | Época | $\mathcal{L}_{Dice}$ (Error Promedio) | Dice Score (Precisión) | Mejora ($\Delta$) |
 | :---: | :---: | :---: | :---: |
-| **1** | 0.61 | 39% | - |
-| **2** | 0.50 | 50% | -0.11 |
-| **3** | *En cómputo* | *En cómputo* | *En cómputo* |
+| **1** | 0.611 | 38.9% | - |
+| **2** | 0.501 | 49.9% | -0.110 |
+| **3** | 0.458 | 54.2% | -0.043 |
 | **4** | *Pendiente* | *Pendiente* | *Pendiente* |
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
