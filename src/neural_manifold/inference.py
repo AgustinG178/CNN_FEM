@@ -10,7 +10,8 @@ def predict_volume_from_dicom(
     model_path: str,
     patch_size: tuple = (64, 64, 64),
     patch_overlap: tuple = (16, 16, 16),
-    device_str: str = 'cuda'
+    device_str: str = 'cuda',
+    return_probabilities: bool = False
 ) -> np.ndarray:
     r"""
     Orquesta la inferencia sobre volúmenes masivos mediante reconstrucción por parches deslizantes,
@@ -25,7 +26,11 @@ def predict_volume_from_dicom(
         model.load_state_dict(torch.load(model_path, map_location=device))
     else:
         print(f"[!] ADVERTENCIA: No se encontró {model_path}. Se usarán pesos aleatorios para prueba.")
-    model.eval()
+        
+    # [!] HACK DE INGENIERÍA: En lugar de model.eval(), forzamos model.train()
+    # Esto obliga a las capas BatchNorm a recalcular la media y varianza sobre el
+    # parche actual, en lugar de usar la "running_mean" sesgada del entrenamiento.
+    model.train()
 
     # 2. Ensamblar Tensor 3D a partir del DICOM y mapeo HU
     print("-> Ensamblando tensor espacial desde DICOM...")
@@ -61,10 +66,13 @@ def predict_volume_from_dicom(
             aggregator.add_batch(logits.cpu(), locations)
             
     # 5. Reconstrucción global
-    predicted_volume = aggregator.get_output_tensor()
+    predicted_volume = aggregator.get_output_tensor().squeeze().numpy()
     print("-> Reconstrucción del co-dominio espacial finalizada.")
     
+    if return_probabilities:
+        return predicted_volume
+        
     # Binarización usando umbral
-    binary_mask = (predicted_volume > 0.5).squeeze().numpy()
+    binary_mask = (predicted_volume > 0.5)
     
     return binary_mask

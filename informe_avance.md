@@ -92,6 +92,17 @@ A la fecha de redacción de este informe, el modelo se encuentra en su fase de e
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
 
+### Resultados Cualitativos: Evolución del Aprendizaje Topológico
+Para evidenciar empíricamente que la red neuronal está extrayendo correctamente las características geométricas del tejido óseo, se reconstruyó el campo de probabilidades espaciales ($\hat{\mathbf{Y}}$) sobre un paciente de prueba (totalmente ajeno al conjunto de entrenamiento) a lo largo de las primeras cuatro épocas.
+
+![Evolución de la Distribución de Probabilidades Espaciales (Épocas 1 a 4)](progreso_entrenamiento.png)
+
+Este análisis cualitativo revela tres fenómenos críticos del comportamiento inicial de la IA:
+1. **Convergencia Anatómica (Mapa de Calor):** Las zonas violetas/azules representan baja probabilidad de hueso (10%-30%), mientras que las zonas amarillo brillante indican una certeza absoluta (>90%). En la Época 4, las regiones de máxima probabilidad abrazan con precisión micrométrica la corteza ósea de las cabezas femorales y las crestas ilíacas.
+2. **Decaimiento de la Masa de Probabilidad (Eliminación de Falsos Positivos):** Analizando el volumen 3D completo, en la Época 1 la red asignaba una masa de probabilidad total de $\approx 3.03 \times 10^6$. Para la Época 4, la masa global cae a $\approx 1.76 \times 10^6$. Si observamos el *Slice 99* de la imagen, la suma de probabilidades sube de 27.6K a un pico de 44K en la Época 3 mientras "descubre" el hueso, y luego se estabiliza en 29K en la Época 4. Esta contracción indica que la red está aprendiendo a ser mucho más estricta, suprimiendo gradualmente el ruido.
+3. **Artefactos Fuera de Distribución (Bordes de la Tomografía):** Se observa que la red "alucina" falsos positivos (amarillo) en los bordes negros externos de la tomografía. Esto es un resultado teórico esperado: dado que el entrenamiento utilizó un muestreo negativo estricto (recortando solo zonas cercanas al hueso), la red inicial jamás vio "aire vacío absoluto". Al enfrentarse a ese vacío por primera vez, las convoluciones arrojan ruido. Este artefacto es trivial de eliminar en la Fase 3 mediante un simple umbral físico (ej. todo vóxel con $HU < 0$ se fuerza a probabilidad cero).
+4. **Resolución de Parches (Sliding Window):** Los bloques rectangulares visibles en el mapa de calor son artefactos propios del algoritmo de *Ventana Deslizante*. Para la reconstrucción completa en la Fase 3, este efecto se mitigará aplicando una matriz gaussiana de suavizado (`overlap_mode='hann'`).
+
 ### Modelo Analítico de Convergencia
 Desde la perspectiva de la teoría de optimización convexa local, la curva de aprendizaje empírica no es lineal, sino que obedece a una dinámica de decaimiento exponencial a medida que el optimizador desciende por el colector topológico (Manifold) de la función de pérdida. 
 

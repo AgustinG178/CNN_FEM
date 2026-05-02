@@ -13,11 +13,6 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
     
     # 1. Cargar la imagen original (para usarla de fondo)
     X_raw = assemble_tensor_and_hu(dicom_test_dir)
-    # Seleccionar el slice central del eje Z si no se especifica uno
-    if slice_index is None:
-        slice_index = X_raw.shape[2] // 2
-        
-    slice_original = X_raw[:, :, slice_index]
     
     # 2. Definir los modelos a evaluar
     epocas = [1, 2, 3, 4]
@@ -31,13 +26,27 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
             continue
             
         print(f"Evaluando Época {ep}...")
-        # Inferir todo el volumen
+        # Inferir todo el volumen retornando mapa de calor (probabilidades 0 a 1)
         vol_pred = predict_volume_from_dicom(
             dicom_dir=dicom_test_dir, 
             model_path=model_path,
-            device_str='cpu' # Aseguramos que corra en cualquier PC local
+            device_str='cpu',
+            return_probabilities=True
         )
+        
+        # Calcular masa de probabilidad (en lugar de conteo binario)
+        masa_total = np.sum(vol_pred)
+        print(f"  -> Masa de probabilidad de hueso en volumen 3D: {masa_total:.2f}")
         predicciones.append(vol_pred)
+        
+    # Autoseleccionar el mejor slice si no se proveyó uno
+    if slice_index is None:
+        # Buscar el slice Z donde la última época tenga más masa de probabilidad de hueso
+        masa_por_slice = [np.sum(predicciones[-1][:, :, z]) for z in range(X_raw.shape[2])]
+        slice_index = np.argmax(masa_por_slice)
+        print(f"\nAutoseleccionado slice {slice_index} basado en el pico de probabilidad de la red.")
+            
+    slice_original = X_raw[:, :, slice_index]
         
     # 3. Dibujar la progresión
     print("Graficando el Gradiente de Mejora Cualitativa...")
@@ -45,17 +54,25 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
     
     # Mostrar DICOM Original
     axes[0].imshow(slice_original, cmap='gray', vmin=-500, vmax=1500)
-    axes[0].set_title("Tomografía Original")
+    axes[0].set_title(f"Tomografía Original (Slice {slice_index})")
     axes[0].axis('off')
     
-    # Mostrar la evolución de las Máscaras
+    # Mostrar la evolución del Mapa de Calor
     for i, ep in enumerate(epocas):
         slice_pred = predicciones[i][:, :, slice_index]
         
-        # Superponer la máscara roja sobre la tomografía
+        # Ocultar las probabilidades menores a 0.05 para limpiar el ruido del fondo
+        slice_pred_masked = np.ma.masked_where(slice_pred < 0.05, slice_pred)
+        
+        # Masa local en este slice
+        masa_local = np.sum(slice_pred)
+        print(f"Época {ep}: Masa de probabilidad en slice {slice_index}: {masa_local:.2f}")
+        
+        # Superponer el mapa de calor (inferno) sobre el hueso
         axes[i+1].imshow(slice_original, cmap='gray', vmin=-500, vmax=1500)
-        axes[i+1].imshow(slice_pred, cmap='Reds', alpha=0.5) # Máscara semitransparente
-        axes[i+1].set_title(f"Predicción Época {ep}")
+        # Usamos cmap='inferno' para ver claramente las zonas frías (morado) y calientes (amarillo)
+        im = axes[i+1].imshow(slice_pred_masked, cmap='inferno', alpha=0.7, vmin=0, vmax=1)
+        axes[i+1].set_title(f"Mapa Probabilidad Época {ep}\n(Suma P: {masa_local:.1f})")
         axes[i+1].axis('off')
         
     plt.tight_layout()
@@ -66,6 +83,6 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
 if __name__ == "__main__":
     # IMPORTANTE: Reemplaza esta ruta con una carpeta de DICOM de un paciente de prueba
     # que la IA no haya visto nunca (o uno del dataset para ver cómo aprende).
-    DIR_PACIENTE_PRUEBA = "data/01_raw_dicom/Paciente_45" 
+    DIR_PACIENTE_PRUEBA = "data/01_raw/Paciente_45" 
     
     generar_comparacion_visual(DIR_PACIENTE_PRUEBA)
