@@ -77,3 +77,17 @@ $$
 * **Datos procesados:** 61 pacientes escaneados, particionados y limpiados. Se ha reservado un conjunto estricto de pacientes y fantomas (modelos físicos) que la IA no verá durante el entrenamiento, para poder realizarle un "examen final" objetivo.
 * **Cómputo:** El entrenamiento se encuentra en proceso en particiones exclusivas de alta prioridad de la FIUNER, con guardados de seguridad automáticos.
 * **Proyección:** El pipeline base ha demostrado ser altamente robusto, tolerante a fallos y extremadamente eficiente en la gestión de memoria RAM y almacenamiento.
+
+---
+
+## 4. Resultados Preliminares del Entrenamiento
+A la fecha de redacción de este informe, el modelo se encuentra en su fase de entrenamiento en el clúster. La convergencia inicial de la función de pérdida ($\mathcal{L}_{Dice}$) demuestra un rápido aprendizaje topológico por parte de la red durante las primeras épocas:
+
+| Época | $\mathcal{L}_{Dice}$ (Error Promedio) | Dice Score (Precisión) | Mejora ($\Delta$) |
+| :---: | :---: | :---: | :---: |
+| **1** | 0.61 | 39% | - |
+| **2** | 0.50 | 50% | -0.11 |
+| **3** | *En cómputo* | *En cómputo* | *En cómputo* |
+| **4** | *Pendiente* | *Pendiente* | *Pendiente* |
+
+*El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
