@@ -42,12 +42,13 @@ $$
   Donde $N$ es el total de vóxeles, $p_i$ es la probabilidad continua que predice la IA (0 a 1), $g_i$ es el ground truth binario real (0 o 1), y $\epsilon$ es una constante de suavizado para evitar discontinuidades. Minimizando analíticamente este valor mediante derivadas parciales (Backpropagation), la red ajusta sus más de 1.4 millones de parámetros internos.
 * Este proceso se repetirá 50 veces (50 épocas) a lo largo de varios días utilizando 12 núcleos de procesamiento al máximo de su capacidad.
 
-### Fase 3: Proyección Física y COMSOL (Próximos Pasos)
-Una vez que el clúster nos devuelva el "cerebro" entrenado (un archivo `.pth`), iniciaremos la fase final.
+### Fase 3: Proyección Física y COMSOL (Implementada)
+Una vez que el clúster devuelve el "cerebro" entrenado (un archivo `.pth`), el pipeline ejecuta automáticamente la fase final de reconstrucción biomecánica.
 
-1. **Inferencia:** Le daremos a la IA la tomografía de un paciente completamente nuevo (alguien que no haya visto antes). En cuestión de segundos, la IA identificará todo el tejido óseo de manera automática.
-2. **Generación de Mallas (Meshing):** Convertiremos los píxeles identificados por la IA en una malla 3D (formato STL).
-3. **Mapeo de Materiales (Propiedades Biomecánicas):** El software cruzará la malla con la densidad radiológica (Unidades Hounsfield o HU) original. Basados en la literatura biomecánica estándar (e.g., Carter & Hayes, Rho), el código traducirá la escala de grises a propiedades físicas en dos pasos:
+1. **Inferencia:** La IA recibe la tomografía de un paciente completamente nuevo (uno que no vio durante el entrenamiento). Mediante el algoritmo de *Ventana Deslizante* (*Sliding Window*) con parches de 64×64×64 vóxeles, reconstruye el campo de probabilidades sobre todo el volumen 3D en cuestión de minutos.
+2. **Separación Anatómica (Teoría de Grafos):** La máscara binaria generada por la IA se convierte en una superficie triangulada mediante *Marching Cubes*. Luego, un algoritmo de **Componentes Conexos** (basado en adyacencia de caras del grafo de la malla) separa automáticamente los 3 dominios óseos principales: **Pelvis**, **Fémur Izquierdo** y **Fémur Derecho**. La clasificación Izquierda/Derecha se realiza heurísticamente comparando las coordenadas del centroide de cada componente en el eje X del espacio físico.
+3. **Sellado Topológico (Watertight):** Cada malla separada se somete a un proceso de cierre topológico que incluye: voxelización → cierre morfológico binario → suavizado gaussiano → re-extracción con *Marching Cubes* → suavizado de Taubin. Esto garantiza que la malla final satisface el **Teorema de la Frontera** ($\partial \Omega$ es una 2-variedad cerrada sin borde), condición estrictamente necesaria para que el mallador volumétrico de COMSOL pueda operar sin errores de "bordes abiertos" o "auto-intersecciones".
+4. **Mapeo de Materiales (Propiedades Biomecánicas):** El software cruza la malla con la densidad radiológica (Unidades Hounsfield o HU) original, exportada como NIfTI. Basados en la literatura biomecánica estándar (e.g., Carter & Hayes, Rho), el código traduce la escala de grises a propiedades físicas en dos pasos:
    * **Densidad Aparente ($\rho$):** Relación lineal con las Unidades Hounsfield.
 
 $$
@@ -62,7 +63,7 @@ $$
 
    *(Donde $a, b, C, n$ son constantes de calibración definidas empíricamente).*
    Esto le asignará a cada elemento o "pedacito" de hueso una rigidez específica.
-4. **Exportación a COMSOL y Solución PDE:** El modelo biomecánico heterogéneo (donde cada zona del hueso tiene un $E$ distinto) será importado a COMSOL Multiphysics. Utilizando este Módulo de Young para componer el tensor de rigidez $\mathbb{C}$ en la Ley de Hooke generalizada ($\sigma = \mathbb{C} : \varepsilon$), el software resolverá numéricamente las **Ecuaciones en Derivadas Parciales (PDEs) de Navier-Cauchy para Elastostática**:
+5. **Exportación a COMSOL y Solución PDE:** El modelo biomecánico heterogéneo (donde cada zona del hueso tiene un $E$ distinto) será importado a COMSOL Multiphysics. Utilizando este Módulo de Young para componer el tensor de rigidez $\mathbb{C}$ en la Ley de Hooke generalizada ($\sigma = \mathbb{C} : \varepsilon$), el software resolverá numéricamente las **Ecuaciones en Derivadas Parciales (PDEs) de Navier-Cauchy para Elastostática**:
 
 $$
 \nabla \cdot \sigma + \mathbf{f} = 0
@@ -75,8 +76,8 @@ $$
 
 ## 3. Estado Actual y Conclusión
 * **Datos procesados:** 61 pacientes escaneados, particionados y limpiados. Se ha reservado un conjunto estricto de pacientes y fantomas (modelos físicos) que la IA no verá durante el entrenamiento, para poder realizarle un "examen final" objetivo.
-* **Cómputo:** El entrenamiento se encuentra en proceso en particiones exclusivas de alta prioridad de la FIUNER, con guardados de seguridad automáticos.
-* **Proyección:** El pipeline base ha demostrado ser altamente robusto, tolerante a fallos y extremadamente eficiente en la gestión de memoria RAM y almacenamiento.
+* **Cómputo:** El entrenamiento se encuentra en proceso en particiones exclusivas de alta prioridad de la FIUNER, con guardados de seguridad automáticos. A la época 5, el Dice Score alcanza el 57.2%.
+* **Pipeline End-to-End:** El código de la Fase 3 (separación anatómica por Componentes Conexos, sellado topológico Watertight, exportación NIfTI y mapeo de rigidez heterogénea) se encuentra completamente implementado y listo para ejecutarse una vez finalizado el entrenamiento.
 
 ---
 

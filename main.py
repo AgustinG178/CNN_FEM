@@ -3,9 +3,38 @@ import numpy as np
 import trimesh
 from src.isolate_main import extract_anatomical_domains, optimize_mesh_quality
 from src.tensor_pde.material_mapping import generate_comsol_material_field
-from src.tensor_pde.comsol_mapper import map_all_selections
+from src.tensor_pde.comsol_mapper import map_all_selections, export_heterogeneous_field
+from src.tensor_pde.io_module import assemble_tensor_and_hu, extract_affine_matrix
 from src.neural_manifold.inference import predict_volume_from_dicom
 from src.neural_manifold.segment_pde import process_and_save_dl_mesh
+
+def export_dicom_to_nifti(dicom_dir: str, output_path: str) -> str:
+    r"""
+    Ensambla el tensor volumétrico HU desde DICOM y lo persiste como NIfTI (.nii.gz),
+    generando la matriz afín necesaria para el mapeo de propiedades biomecánicas.
+    """
+    import nibabel as nib
+    
+    X_hu = assemble_tensor_and_hu(dicom_dir)
+    
+    # Extraer la matriz afín del primer DICOM
+    dicom_files = [os.path.join(dicom_dir, f) for f in os.listdir(dicom_dir) if f.lower().endswith('.dcm')]
+    if not dicom_files:
+        raise ValueError("No se encontraron DICOMs para extraer la matriz afín.")
+    
+    T = extract_affine_matrix(dicom_files[0])
+    
+    # NIfTI espera la convención RAS, pero nuestra matriz T ya está en LPS.
+    # Para compatibilidad con nibabel, invertimos los dos primeros ejes (L->R, P->A).
+    T_ras = T.copy()
+    T_ras[0, :] *= -1  # L -> R
+    T_ras[1, :] *= -1  # P -> A
+    
+    nifti_img = nib.Nifti1Image(X_hu, affine=T_ras)
+    nib.save(nifti_img, output_path)
+    print(f"-> Volumen NIfTI exportado: {output_path} (shape: {X_hu.shape})")
+    
+    return output_path
 
 def main():
     r"""
@@ -48,24 +77,23 @@ def main():
                 patch_size=(64, 64, 64)
             )
             
-            # 1.b Generación de STL optimizado
+            # 1.b Generación de STL separados (Pelvis, Fémur L, Fémur R) + Watertight
             process_and_save_dl_mesh(
                 binary_mask=binary_mask, 
                 dicom_dir=dicom_dir, 
                 out_dir=dominios_dir
             )
 
-        print("2. Generando campo escalar de rigidez heterogénea E(HU)...")
-        # En modo DL el NIfTI se puede exportar en el futuro, o depender del original
+        # 2. Exportar volumen HU como NIfTI para el mapeo de materiales
+        print("2. Exportando volumen DICOM como NIfTI para mapeo de rigidez...")
         nifti_volume = os.path.join(out_dir, "ct_volume.nii.gz")
-        material_output = os.path.join(out_dir, "mapa_elasticidad_heterogeneo.txt")
+        export_dicom_to_nifti(dicom_dir, nifti_volume)
         
-        if os.path.exists(nifti_volume):
-            generate_comsol_material_field(nifti_volume, material_output)
-        else:
-            print("[!] Advertencia: No se encontró ct_volume.nii.gz. (Nota: en modo DL puro puede ser necesario exportarlo).")
+        print("3. Generando campo escalar de rigidez heterogénea E(HU)...")
+        material_output = os.path.join(out_dir, "mapa_elasticidad_heterogeneo.txt")
+        generate_comsol_material_field(nifti_volume, material_output)
 
-        print("3. Identificando subvariedades de frontera para condiciones de contorno...")
+        print("4. Identificando subvariedades de frontera para condiciones de contorno...")
         map_all_selections(dominios_dir, selections_dir)
 
         print(f"--- PROCESAMIENTO FINALIZADO ---")
