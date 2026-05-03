@@ -66,7 +66,7 @@ $$
 5. **Exportación a COMSOL y Solución PDE:** El modelo biomecánico heterogéneo (donde cada zona del hueso tiene un $E$ distinto) será importado a COMSOL Multiphysics. Utilizando este Módulo de Young para componer el tensor de rigidez $\mathbb{C}$ en la Ley de Hooke generalizada ($\sigma = \mathbb{C} : \varepsilon$), el software resolverá numéricamente las **Ecuaciones en Derivadas Parciales (PDEs) de Navier-Cauchy para Elastostática**:
 
 $$
-\nabla \cdot \sigma + \mathbf{f} = 0
+\partial_k \sigma_{kj} + f_j = 0
 $$
 
    *(Donde $\sigma$ es el tensor de tensiones y $\mathbf{f}$ representa las fuerzas o cargas aplicadas).*
