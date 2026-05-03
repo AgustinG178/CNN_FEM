@@ -24,13 +24,11 @@ DIR_PACIENTE = "data/01_raw/Fantoma_Pelvis"
 # Directorio de salida
 DIR_SALIDA_BASE = "data/02_processed/evolucion_3d"
 
-# Umbrales adaptativos por época
-UMBRALES_POR_EPOCA = {
-    1: 0.15,
-    4: 0.30,
-    7: 0.40,
-}
-UMBRAL_DEFAULT = 0.40
+# Umbral de binarización ÚNICO para todas las épocas.
+# Usar el mismo umbral permite una comparación justa.
+# 0.20 es un buen punto medio: no tan permisivo como 0.15 (mucho ruido)
+# ni tan estricto como 0.40 (pierde estructura).
+UMBRAL = 0.20
 
 # Filtro físico: todo vóxel con HU < este valor se descarta (es aire)
 HU_THRESHOLD = -200
@@ -104,10 +102,9 @@ def main():
         post = int(np.sum(prob_filtered > 0.5))
         print(f"   Falsos positivos eliminados: {pre - post}")
         
-        # 4. Binarización
-        umbral = UMBRALES_POR_EPOCA.get(ep, UMBRAL_DEFAULT)
-        print(f"-> Paso 3/4: Binarización con τ = {umbral}...")
-        binary_mask = (prob_filtered > umbral).astype(np.float32)
+        # 3. Binarización
+        print(f"-> Paso 3/4: Binarización con τ = {UMBRAL} (uniforme)...")
+        binary_mask = (prob_filtered > UMBRAL).astype(np.float32)
         total_bone = int(np.sum(binary_mask))
         print(f"   Vóxeles óseos: {total_bone}")
         
