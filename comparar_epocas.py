@@ -1,4 +1,6 @@
 import os
+import glob
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 from src.neural_manifold.inference import predict_volume_from_dicom
@@ -7,24 +9,27 @@ from src.tensor_pde.io_module import assemble_tensor_and_hu
 def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
     """
     Genera un panel de matplotlib comparando cómo la IA "esculpe" el hueso
-    a lo largo de las primeras 4 épocas de entrenamiento.
+    a lo largo de las épocas de entrenamiento. Se muestra en una grilla de 3 columnas.
     """
-    print(f"Generando panel evolutivo para el paciente: {dicom_test_dir}")
+    print(f"Generando panel evolutivo para el paciente/fantoma: {dicom_test_dir}")
     
     # 1. Cargar la imagen original (para usarla de fondo)
     X_raw = assemble_tensor_and_hu(dicom_test_dir)
     
-    # 2. Definir los modelos a evaluar
-    epocas = [1, 2, 3, 4]
+    # 2. Definir los modelos a evaluar buscando todos los .pth
+    modelos = sorted(glob.glob("data/03_models/unet_bone_topology_ep*.pth"), 
+                     key=lambda x: int(x.split('ep')[-1].split('.pth')[0]))
+    
+    if not modelos:
+        print("[!] No se encontraron modelos en data/03_models/")
+        return
+        
+    epocas = [int(m.split('ep')[-1].split('.pth')[0]) for m in modelos]
+    print(f"Épocas encontradas: {epocas}")
+    
     predicciones = []
     
-    for ep in epocas:
-        model_path = f"data/03_models/unet_bone_topology_ep{ep}.pth"
-        if not os.path.exists(model_path):
-            print(f"[!] No se encontró localmente {model_path}. Por favor, descárgalo del clúster con WinSCP.")
-            predicciones.append(np.zeros_like(X_raw))
-            continue
-            
+    for ep, model_path in zip(epocas, modelos):
         print(f"Evaluando Época {ep}...")
         # Inferir todo el volumen retornando mapa de calor (probabilidades 0 a 1)
         vol_pred = predict_volume_from_dicom(
@@ -34,7 +39,7 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
             return_probabilities=True
         )
         
-        # Calcular masa de probabilidad (en lugar de conteo binario)
+        # Calcular masa de probabilidad
         masa_total = np.sum(vol_pred)
         print(f"  -> Masa de probabilidad de hueso en volumen 3D: {masa_total:.2f}")
         predicciones.append(vol_pred)
@@ -66,7 +71,12 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
         
     # 3. Dibujar la progresión
     print("Graficando el Gradiente de Mejora Cualitativa...")
-    fig, axes = plt.subplots(1, 5, figsize=(25, 5))
+    n_plots = 1 + len(epocas)  # 1 original + N épocas
+    n_cols = 3
+    n_rows = math.ceil(n_plots / n_cols)
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 6 * n_rows))
+    axes = axes.flatten()
     
     # Mostrar DICOM Original
     axes[0].imshow(slice_original, cmap='gray', vmin=-500, vmax=1500)
@@ -82,13 +92,16 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
         
         # Masa local en este slice
         masa_local = np.sum(slice_pred)
-        print(f"Época {ep}: Masa de probabilidad en slice {slice_index}: {masa_local:.2f}")
         
         # Superponer el mapa de calor (inferno) sobre el hueso
         axes[i+1].imshow(slice_original, cmap='gray', vmin=-500, vmax=1500)
-        im = axes[i+1].imshow(slice_pred_masked, cmap='inferno', alpha=0.7, vmin=0, vmax=1)
-        axes[i+1].set_title(f"Mapa Probabilidad Época {ep}\n(Suma P: {masa_local:.1f})")
+        axes[i+1].imshow(slice_pred_masked, cmap='inferno', alpha=0.7, vmin=0, vmax=1)
+        axes[i+1].set_title(f"Época {ep}\n(Suma P: {masa_local:.1f})")
         axes[i+1].axis('off')
+        
+    # Ocultar ejes no utilizados
+    for j in range(n_plots, len(axes)):
+        axes[j].axis('off')
         
     plt.tight_layout()
     
@@ -103,8 +116,7 @@ def generar_comparacion_visual(dicom_test_dir: str, slice_index: int = None):
     plt.show()
 
 if __name__ == "__main__":
-    # IMPORTANTE: Reemplaza esta ruta con una carpeta de DICOM de un paciente de prueba
-    # que la IA no haya visto nunca (o uno del dataset para ver cómo aprende).
-    DIR_PACIENTE_PRUEBA = "data/01_raw/Fantoma_CEMENER" 
+    # Usamos un fantoma para aprovechar los cortes coronales (ideal para ver la pelvis entera)
+    DIR_PACIENTE_PRUEBA = "data/01_raw/Paciente_22" 
     
     generar_comparacion_visual(DIR_PACIENTE_PRUEBA)

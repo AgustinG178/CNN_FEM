@@ -16,6 +16,13 @@ def predict_volume_from_dicom(
     r"""
     Orquesta la inferencia sobre volúmenes masivos mediante reconstrucción por parches deslizantes,
     preservando la invariancia topológica y maximizando la resolución local.
+    
+    SOLUCIÓN AL PROBLEMA DE BatchNorm:
+    En vez de usar model.train() (que produce estadísticas inconsistentes entre parches)
+    o model.eval() (que usa running_stats sesgados del entrenamiento), usamos
+    RECALIBRACIÓN: primero pasamos todos los parches del volumen actual por el modelo
+    en modo train para actualizar las running_stats, y luego hacemos la inferencia
+    real en modo eval con las estadísticas recalibradas.
     """
     device = torch.device(device_str if torch.cuda.is_available() else 'cpu')
     print(f"-> Cargando modelo topológico desde: {model_path} en {device}")
@@ -25,13 +32,8 @@ def predict_volume_from_dicom(
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path, map_location=device))
     else:
-        print(f"[!] ADVERTENCIA: No se encontró {model_path}. Se usarán pesos aleatorios para prueba.")
+        print(f"[!] ADVERTENCIA: No se encontró {model_path}. Se usarán pesos aleatorios.")
         
-    # [!] HACK DE INGENIERÍA: En lugar de model.eval(), forzamos model.train()
-    # Esto obliga a las capas BatchNorm a recalcular la media y varianza sobre el
-    # parche actual, en lugar de usar la "running_mean" sesgada del entrenamiento.
-    model.train()
-
     # 2. Ensamblar Tensor 3D a partir del DICOM y mapeo HU
     print("-> Ensamblando tensor espacial desde DICOM...")
     X_np = assemble_tensor_and_hu(dicom_dir)
@@ -50,8 +52,51 @@ def predict_volume_from_dicom(
         patch_size=patch_size,
         patch_overlap=patch_overlap,
     )
-    patch_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=4)
-    aggregator = tio.inference.GridAggregator(grid_sampler, overlap_mode='hann')
+    
+    # =========================================================================
+    # FASE 1: RECALIBRACIÓN DE BatchNorm
+    # =========================================================================
+    # Pasamos TODOS los parches del volumen actual por el modelo en modo train
+    # para que las running_mean/running_var se actualicen con las estadísticas
+    # de ESTE paciente específico. Esto resuelve el sesgo del entrenamiento.
+    # =========================================================================
+    print("-> Recalibrando BatchNorm sobre el volumen actual...")
+    
+    # Resetear running stats de todas las capas BatchNorm
+    for module in model.modules():
+        if isinstance(module, (torch.nn.BatchNorm3d, torch.nn.BatchNorm2d, torch.nn.BatchNorm1d)):
+            module.running_mean.zero_()
+            module.running_var.fill_(1.0)
+            module.num_batches_tracked.zero_()
+            # Usar momentum=0.1 para que las stats se estabilicen rápido
+            module.momentum = 0.1
+    
+    model.train()
+    calibration_loader = torch.utils.data.DataLoader(grid_sampler, batch_size=4)
+    with torch.no_grad():
+        for patches_batch in calibration_loader:
+            inputs = patches_batch['volume'][tio.DATA].to(device)
+            _ = model(inputs)  # Solo forward pass para actualizar running_stats
+    
+    print("   BatchNorm recalibrado con las estadísticas de este volumen.")
+    
+    # =========================================================================
+    # FASE 2: INFERENCIA REAL EN MODO EVAL
+    # =========================================================================
+    # Ahora que las running_stats reflejan este paciente, usamos model.eval()
+    # para que TODOS los parches se normalicen con las MISMAS estadísticas.
+    # Esto elimina la inconsistencia entre parches.
+    # =========================================================================
+    model.eval()
+    
+    # Necesitamos un nuevo GridSampler y Aggregator (el anterior fue consumido)
+    grid_sampler2 = tio.inference.GridSampler(
+        subject,
+        patch_size=patch_size,
+        patch_overlap=patch_overlap,
+    )
+    patch_loader = torch.utils.data.DataLoader(grid_sampler2, batch_size=4)
+    aggregator = tio.inference.GridAggregator(grid_sampler2, overlap_mode='hann')
     
     # 4. Inferencia Local iterativa
     print(f"-> Computando inferencia topológica mediante parches deslizantes {patch_size}...")

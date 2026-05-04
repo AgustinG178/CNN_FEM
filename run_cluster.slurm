@@ -2,11 +2,12 @@
 #SBATCH --job-name=CNN_FEM_Agus
 #SBATCH --partition=internos              # FIUNER tiene prioridad absoluta aquí (6 nodos)
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=12                # Límite Físico: 12 cores por nodo según tu manual
+#SBATCH --cpus-per-task=24                # 24 cores (Nodo completo según manual)
+#SBATCH --mem=32G                         # 32GB de RAM (Seguro y suficiente)
 #SBATCH --output=entrenamiento_%j.log 
 #SBATCH --error=errores_%j.err        
 #SBATCH --mail-user=agugrio17@gmail.com 
-#SBATCH --mail-type=END,FAIL              
+#SBATCH --mail-type=BEGIN,END,FAIL              
 #SBATCH --no-requeue                      
 
 # 1. Preparar el entorno
