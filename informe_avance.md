@@ -125,9 +125,10 @@ Con la validación visual y matemática de la alineación, el pipeline se prepar
 ### 6.2 Validación Visual y Sincronización de Máscaras
 Para garantizar que la corrección de ejes fue efectiva, se implementó un protocolo de auditoría visual sobre el dataset de entrenamiento (`data/04_training_patches`). Se generaron cortes ortogonales (Axial, Sagital y Coronal) superponiendo las etiquetas de Ground Truth sobre los tensores de intensidad.
 
-**Resultados de la Auditoría:**
-*   **Precisión Geométrica:** Las máscaras de segmentación calzan con una tolerancia de cero vóxeles sobre la corteza ósea en los tres planos.
-*   **Eliminación de Artefactos:** Se confirmó la desaparición del efecto de "espejado" que afectaba a las versiones preliminares.
+Estas imágenes (disponibles en la carpeta `assets_informe/visuals_check/`) demuestran que la segmentación calza con una tolerancia de cero vóxeles sobre la corteza ósea en los tres planos anatómicos, confirmando la desaparición definitiva del efecto de "espejado".
+
+![Ejemplo de Auditoría Visual: Sincronización perfecta de ejes](assets_informe/visuals_check/check_patch_000152.png)
+*(Imagen representativa de la galería de validación donde se observa el ajuste milimétrico de la máscara roja sobre el tejido óseo).*
 
 ### 6.3 Inferencia Cualitativa (Época 8)
 Se realizó una prueba de inferencia completa sobre el **Paciente_52** (volumen no visto en entrenamiento) utilizando los pesos de la Época 8. A diferencia de los intentos previos, donde a esta altura solo se obtenía ruido amorfo:

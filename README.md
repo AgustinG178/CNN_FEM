@@ -56,9 +56,22 @@ pip install -r requirements.txt
 ```
 *Nota: Para la optimización de mallas se requieren `pyacvd` y `pyvista`, ya incluidos en las dependencias.*
 
-## 🏛️ Despliegue en Clúster (SLURM)
-Para entrenar el modelo en un entorno de alto rendimiento:
-```bash
-sbatch run_cluster.slurm
-```
-Monitoreo de convergencia: `tail -f entrenamiento_[JOB_ID].log`
+---
+
+## 💾 Gestión de Datos y Peso del Repositorio
+
+Si clonas este repositorio, notarás que la carpeta `data/` está vacía o ausente. Esto es **intencional**.
+
+Debido a que el set de datos médicos completo (CTs crudos + parches de entrenamiento) supera los **40 GB**, estos archivos están protegidos por `.gitignore` y no se suben a la nube. Para reconstruir el entorno de datos, debes:
+1. Colocar tus DICOMs en `data/01_raw/`.
+2. Ejecutar `python prepare_dataset.py`.
+3. Esto generará localmente la estructura de parches necesaria para el entrenamiento.
+
+---
+
+## 🏛️ Despliegue en Clúster de Alto Rendimiento (HPC)
+
+Este pipeline está diseñado para ejecutarse en nodos de supercómputo que utilizan gestores de colas **SLURM**.
+1. **Configuración:** El archivo `run_cluster.slurm` contiene las directivas para solicitar recursos (CPUs, Memoria, Tiempo).
+2. **Lanzamiento:** `sbatch run_cluster.slurm`
+3. **Monitoreo:** `tail -f entrenamiento_[JOB_ID].log`
