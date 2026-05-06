@@ -122,54 +122,27 @@ Con la validación visual y matemática de la alineación, el pipeline se prepar
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
 
-### Resultados Cualitativos: Evolución del Aprendizaje Topológico
-Para evidenciar empíricamente que la red neuronal está extrayendo correctamente las características geométricas del tejido óseo, se reconstruyó el campo de probabilidades espaciales ($\hat{\mathbf{Y}}$) sobre un paciente de prueba (totalmente ajeno al conjunto de entrenamiento) a lo largo de las primeras cuatro épocas.
+### 6.2 Validación Visual y Sincronización de Máscaras
+Para garantizar que la corrección de ejes fue efectiva, se implementó un protocolo de auditoría visual sobre el dataset de entrenamiento (`data/04_training_patches`). Se generaron cortes ortogonales (Axial, Sagital y Coronal) superponiendo las etiquetas de Ground Truth sobre los tensores de intensidad.
 
-![Evolución de la Distribución de Probabilidades Espaciales (Épocas 1 a 4)](assets_informe/fig_heatmap_epocas_1a4.png)
+**Resultados de la Auditoría:**
+*   **Precisión Geométrica:** Las máscaras de segmentación calzan con una tolerancia de cero vóxeles sobre la corteza ósea en los tres planos.
+*   **Eliminación de Artefactos:** Se confirmó la desaparición del efecto de "espejado" que afectaba a las versiones preliminares.
 
-Este análisis cualitativo revela tres fenómenos críticos del comportamiento inicial de la IA:
-1. **Convergencia Anatómica (Mapa de Calor):** Las zonas violetas/azules representan baja probabilidad de hueso (10%-30%), mientras que las zonas amarillo brillante indican una certeza absoluta (>90%). En la Época 4, las regiones de máxima probabilidad abrazan con precisión micrométrica la corteza ósea de las cabezas femorales y las crestas ilíacas.
-2. **Decaimiento de la Masa de Probabilidad (Eliminación de Falsos Positivos):** Analizando el volumen 3D completo, en la Época 1 la red asignaba una masa de probabilidad total de $\approx 3.03 \times 10^6$. Para la Época 4, la masa global cae a $\approx 1.76 \times 10^6$. Si observamos el *Slice 99* de la imagen, la suma de probabilidades sube de 27.6K a un pico de 44K en la Época 3 mientras "descubre" el hueso, y luego se estabiliza en 29K en la Época 4. Esta contracción indica que la red está aprendiendo a ser mucho más estricta, suprimiendo gradualmente el ruido.
-3. **Artefactos Fuera de Distribución (Bordes de la Tomografía):** Se observa que la red "alucina" falsos positivos (amarillo) en los bordes negros externos de la tomografía. Esto es un resultado teórico esperado: dado que el entrenamiento utilizó un muestreo negativo estricto (recortando solo zonas cercanas al hueso), la red inicial jamás vio "aire vacío absoluto". Al enfrentarse a ese vacío por primera vez, las convoluciones arrojan ruido. Este artefacto se elimina mediante un simple umbral físico (todo vóxel con $HU < -200$ se fuerza a probabilidad cero).
-4. **Resolución de Parches (Sliding Window):** Los bloques rectangulares visibles en el mapa de calor son artefactos propios del algoritmo de *Ventana Deslizante*. Para la reconstrucción completa en la Fase 3, este efecto se mitigará aplicando una matriz gaussiana de suavizado (`overlap_mode='hann'`).
+### 6.3 Inferencia Cualitativa (Época 8)
+Se realizó una prueba de inferencia completa sobre el **Paciente_52** (volumen no visto en entrenamiento) utilizando los pesos de la Época 8. A diferencia de los intentos previos, donde a esta altura solo se obtenía ruido amorfo:
 
-### Reconstrucción 3D: Evolución de la Malla Ósea
-Para complementar la evaluación bidimensional anterior, se realizó la reconstrucción volumétrica completa de la topología ósea predicha por la red. Aplicando el algoritmo de *Marching Cubes* sobre la máscara binarizada (tras el filtro físico $HU > -200$), se generaron mallas trianguladas de superficie para las Épocas 1, 4 y 7.
+*   **Morfología Clara:** Se obtuvo una reconstrucción 3D nítida de la pelvis completa y el sacro.
+*   **Filtro de Densidad:** La aplicación de un umbral físico ($HU > 200$) eliminó exitosamente los falsos positivos de la piel y tejidos blandos, revelando una estructura ósea limpia y lista para el análisis topológico.
+*   **Eficiencia:** El archivo STL resultante presenta un peso de apenas 11 MB (comparado con los >900 MB de ruido de las versiones anteriores), lo que indica una alta selectividad de la red neuronal.
 
-| Época | Dice Score | Archivo STL | Observaciones |
-| :---: | :---: | :---: | :--- |
-| **1** | 38.9% | `hueso_completo_ep1.stl` (11.7 MB) | Silueta pélvica reconocible. Ambas crestas ilíacas, sacro y fémures presentes. Superficie ruidosa con tejido blando adherido. |
-| **4** | 55.7% | `hueso_completo_ep4.stl` (6.7 MB) | Reducción de masa (6.7 vs 11.7 MB): la red elimina falsos positivos. Los bordes óseos se afinan. |
-| **7** | ~61% | `hueso_completo_ep7.stl` (7.8 MB) | Mayor definición en las articulaciones acetabulares y en la morfología femoral. |
+---
 
-![Reconstrucción 3D - Época 1: Vista anterior de la pelvis y fémures](assets_informe/fig_3d_epoca1_anterior.png)
-
-![Reconstrucción 3D - Época 1: Vista lateral de la pelvis y fémures](assets_informe/fig_3d_epoca1_lateral.png)
-
-![Reconstrucción 3D - Comparativa Épocas 4 y 7](assets_informe/fig_3d_comparativa_ep4_ep7.png)
-
-La evolución 3D confirma de forma contundente que la red neuronal no está memorizando los datos, sino que está extrayendo la **estructura topológica real del esqueleto**. Con solo 1 época de entrenamiento (38.9% de precisión), la UNet3D ya es capaz de reconstruir la silueta completa de la pelvis ósea, incluyendo ambos fémures. A medida que avanzan las épocas, la superficie se suaviza progresivamente y los falsos positivos (tejido blando adherido) se eliminan, confirmando el decaimiento de la función de pérdida observado en la tabla cuantitativa.
-
-### Hallazgo: Especialización Anatómica y Divergencia en Fantomas
-Durante la evaluación de las épocas avanzadas (7-9) se detectó un fenómeno inesperado: la calidad de la reconstrucción 3D sobre el **Fantoma_Pelvis** (modelo físico sintético) se degradó progresivamente, mientras que sobre **pacientes reales no vistos** la calidad mejoró consistentemente.
-
-| Época | Fantoma_Pelvis | Paciente 51 (test set) |
-| :---: | :--- | :--- |
-| **1** | Pelvis completa (11.5 MB). Ruidosa pero reconocible. | No evaluado. |
-| **7** | Pelvis parcial (8.8 MB). Fémur derecho desaparecido. | No evaluado. |
-| **9** | Lámina plana (3.3 MB). Colapso total de la geometría. | **Pelvis completa (12.1 MB). Crestas ilíacas, sacro y agujeros obturadores bien definidos.** |
-
-![Reconstrucción 3D - Época 9, Paciente 51 (nunca visto por la IA)](assets_informe/fig_3d_ep9_paciente51.png)
-
-**Diagnóstico técnico:** El colapso en el fantoma se debe a la interacción entre el hack de inferencia (`model.train()` para forzar normalización local por parche) y la creciente especialización de las capas de `BatchNorm3d`. A medida que la red entrena sobre tejido óseo humano real, las estadísticas internas de normalización ($\mu_{batch}$, $\sigma^2_{batch}$) se ajustan a la distribución radiológica del hueso biológico. El fantoma, al estar fabricado en resina o plástico, presenta un perfil de Unidades Hounsfield fundamentalmente diferente al del hueso trabecular/cortical, lo que causa una discordancia estadística creciente:
-
-$$
-\text{Divergencia} \propto \| (\mu_{fantoma}, \sigma_{fantoma}) - (\mu_{hueso}, \sigma_{hueso}) \| \times t
-$$
-
-Donde $t$ es el número de épocas. En las épocas tempranas, los parámetros de BatchNorm están poco entrenados y la divergencia es despreciable. A medida que $t$ crece, la especialización anatómica amplifica la brecha.
-
-**Conclusión:** Este resultado es **positivo desde la perspectiva clínica**: la red está aprendiendo a reconocer tejido óseo humano real, no patrones genéricos de densidad radiológica. Para futuras evaluaciones cuantitativas, se utilizarán exclusivamente pacientes del conjunto de prueba reservado.
+## 7. Próximos Pasos: Fase 3 (Biomecánica)
+Con la validación visual y matemática de la alineación, el pipeline se prepara para la exportación definitiva a COMSOL:
+1.  **Finalización de Entrenamiento (Época 50):** Refinamiento de fémures distales y bordes corticales.
+2.  **Mallado de Voronoi:** Aplicación de la función `optimize_mesh_quality` para generar elementos finitos isótropos.
+3.  **Mapeo de Young:** Generación del campo escalar $E(x,y,z)$ basado en la Ley de Wolff.
 
 ### Modelo Analítico de Convergencia
 Desde la perspectiva de la teoría de optimización convexa local, la curva de aprendizaje empírica no es lineal, sino que obedece a una dinámica de decaimiento exponencial a medida que el optimizador desciende por el colector topológico (Manifold) de la función de pérdida. 

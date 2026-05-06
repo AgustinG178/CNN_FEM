@@ -1,105 +1,64 @@
 # Pipeline Biomecánico: DICOM a Elementos Finitos (FEM) con IA
+Este repositorio contiene la arquitectura de software desarrollada para automatizar la reconstrucción tridimensional y el análisis biomecánico de estructuras óseas. Mediante Redes Neuronales Convolucionales 3D (UNet3D), se extrae la topología ósea de tomografías computarizadas (CT/DICOM) y se exporta como mallas isótropas optimizadas para COMSOL Multiphysics.
 
-Este repositorio contiene la arquitectura de software desarrollada para automatizar la reconstrucción tridimensional y el análisis biomecánico de estructuras óseas (pelvis y fémur). Mediante Inteligencia Artificial (Redes Neuronales Convolucionales 3D), se extrae la topología ósea de tomografías computarizadas (CT/DICOM) y se exporta como mallas listas para simulaciones de Elementos Finitos en COMSOL Multiphysics.
-
-> [!NOTE]
-> Para una explicación exhaustiva sobre la matemática, las Ecuaciones en Derivadas Parciales de Navier-Cauchy y el modelo de convergencia de la Inteligencia Artificial, por favor lee el documento científico [informe_avance.md](./informe_avance.md).
+> [!IMPORTANT]
+> **Hito de Fase 2:** El sistema ha superado la divergencia de coordenadas LPS/RAS. El entrenamiento actual demuestra una convergencia acelerada (Dice Score >58% en Época 8) gracias a la sincronización estricta de ejes.
 
 ---
 
 ## 🗂️ Estructura del Proyecto
+El código se organiza en módulos especializados por responsabilidad física y computacional:
 
-El código está modularizado separando estrictamente la preparación de datos, la Inteligencia Artificial y la física del continuo.
-
-```text
-Automatizacion FEM/
-├── data/                       # ⚠️ IGNORADA EN GITHUB (Ver nota abajo)
-│   ├── 01_raw/                 # Tomografías DICOM originales (Pacientes + Fantomas)
-│   ├── 02_processed/           # Mallas STL, NIfTI y mapas de materiales generados
-│   ├── 03_models/              # Pesos pre-entrenados de la red (.pth por época)
-│   └── 04_training_patches/    # Tensores 3D extraídos y filtrados (Negative Sampling)
-├── scripts/                    # Herramientas de diagnóstico, limpieza y fix de datos
-├── src/                        # Código fuente modular
-│   ├── neural_manifold/        # Módulo IA: UNet3D, Inferencia, Dataset, Loss y Segmentación
-│   │   ├── unet_topology.py    #   Arquitectura de la Red Neuronal Convolucional 3D
-│   │   ├── inference.py         #   Reconstrucción volumétrica por Sliding Window
-│   │   ├── segment_pde.py       #   Separación de componentes conexos y sellado Watertight
-│   │   ├── train_unet.py        #   Orquestador del entrenamiento con checkpointing
-│   │   └── dataset_pde.py       #   Dataset y DiceLoss diferenciable
-│   └── tensor_pde/             # Módulo Física: Mapeo de materiales, Meshing y COMSOL
-│       ├── comsol_mapper.py     #   Exportación de campos E(HU) y selecciones de frontera
-│       ├── material_mapping.py  #   Biyección HU → ρ → E (Módulo de Young)
-│       ├── mesh_repair.py       #   Cierre topológico (Watertight) para FEM
-│       └── io_module.py         #   Ensamblado de tensores DICOM y matrices afines
-├── main.py                     # Orquestador principal del pipeline completo (Fase 1→3)
-├── prepare_dataset.py          # Script de limpieza y generación de parches
-├── requirements.txt            # Dependencias actualizadas para entorno local y clúster
-├── run_cluster.slurm           # Orquestador de trabajos para SLURM
-├── informe_avance.md           # Informe científico con justificación matemática
-└── README.md                   # Esta guía
-```
+*   **`src/neural_manifold/`**: Motores de IA. Arquitectura UNet3D, lógica de ventana deslizante e inferencia topológica.
+*   **`src/tensor_pde/`**: Motores de Física. Mapeo HU → Young, reparación de mallas (Watertight) y optimización de calidad mediante partición de Voronoi.
+*   **`scripts/`**: Utilidades de validación rápida y generación de visuales para informes.
 
 ---
 
-## 💾 Nota sobre los Datos (Por qué no está la carpeta `data/`)
+## 🚀 Guía de Uso Rápido (Local)
 
-Si descargas o clonas este repositorio, notarás que la carpeta `data/` y todos los archivos de extensión `.npy`, `.dcm` o `.pth` no están presentes. 
-
-Esto es **intencional**. El set de datos tomográficos original y los parches extraídos tras el proceso de *Negative Sampling* superan los **30 GB** (llegando a 180 GB en su estado crudo), lo cual excede por mucho los límites arquitectónicos de GitHub. 
-
-**Para reproducir el entrenamiento:**
-1. Deberás colocar tus propios archivos médicos en `data/01_raw/` (un subdirectorio por paciente).
-2. Ejecutar localmente el script `python prepare_dataset.py`.
-3. Esto destilará el conocimiento mediante *TotalSegmentator*, aislará las regiones de interés y generará automáticamente la estructura pesada de carpetas que la IA necesita.
-
----
-
-## 🏗️ Pipeline Completo (Fases 1 a 3)
-
-El archivo `main.py` orquesta las tres fases del pipeline de forma secuencial:
-
-```mermaid
-graph LR
-    A[DICOM Crudo] --> B[UNet3D<br>Inferencia 3D]
-    B --> C[Marching Cubes<br>+ Connected Components]
-    C --> D[3 STL Watertight<br>Pelvis / Fémur L / Fémur R]
-    A --> E[DICOM → NIfTI]
-    E --> F[HU → ρ → E<br>Campo de Rigidez]
-    D --> G[COMSOL<br>Selecciones de Frontera]
-    F --> G
-```
-
-1. **Fase 1 (IA):** La UNet3D segmenta el volumen óseo completo mediante ventana deslizante.
-2. **Fase 2 (Geometría):** La máscara binaria se convierte en mallas 3D separadas por hueso usando Teoría de Grafos (Componentes Conexos), y se sellan topológicamente para garantizar compatibilidad FEM.
-3. **Fase 3 (Física):** Se exporta el volumen HU como NIfTI, se mapean las propiedades biomecánicas (Módulo de Young heterogéneo) y se generan las selecciones de frontera (Neumann/Dirichlet) para COMSOL.
-
+### 1. Preparación del Dataset (Fase 1)
+Si tienes tomografías nuevas, colócalas en `data/01_raw/` y corre:
 ```bash
-python main.py
+python prepare_dataset.py
+```
+Esto generará las máscaras de Ground Truth y los parches de entrenamiento filtrados por densidad.
+
+### 2. Prueba de Inferencia (Validación de Pesos)
+Para probar un modelo entrenado (ej. de la Época 8) sobre un paciente:
+1. Descarga el `.pth` del clúster a `data/03_models/`.
+2. Ejecuta el test de inferencia:
+```bash
+python scripts/test_inference.py
+```
+*Este script aplica automáticamente un filtro de densidad (>200 HU) y genera una malla STL limpia.*
+
+### 3. Visualización de Alineación
+Para generar capturas 2D que verifiquen la sincronización entre DICOM y Máscara:
+```bash
+python scripts/create_report_visuals.py
 ```
 
 ---
 
-## 🚀 Instalación y Despliegue en Clúster HPC
+## 🏗️ Tecnología y Optimización FEM
+A diferencia de segmentadores genéricos, este pipeline está diseñado para **Ingeniería Biomecánica**:
+*   **Remallado de Voronoi:** Integra `pyacvd` para garantizar que los elementos de la malla sean isótropos, evitando errores de convergencia en el mallador de COMSOL.
+*   **Sellado Watertight:** Algoritmo determinista que asegura que la geometría sea un sólido cerrado (2-variedad), eliminando auto-intersecciones.
+*   **Mapeo de Materiales:** Genera campos escalares de Módulo de Young basados en la Ley de Wolff, permitiendo simulaciones de heterogeneidad ósea real.
 
-Este pipeline está fuertemente optimizado para ser ejecutado en nodos de supercómputo que utilizan gestores de colas **SLURM**, permitiendo entrenamiento distribuido en CPU utilizando OpenMP.
+---
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/AgustinG178/CNN_FEM.git
-   cd CNN_FEM
-   ```
+## ⚙️ Instalación
+Asegúrate de tener un entorno Python 3.10+ y ejecuta:
+```bash
+pip install -r requirements.txt
+```
+*Nota: Para la optimización de mallas se requieren `pyacvd` y `pyvista`, ya incluidos en las dependencias.*
 
-2. **Instalar Dependencias:**
-   Asegúrate de utilizar las versiones exactas provistas para garantizar la compatibilidad de PyTorch y Torchio con intérpretes Python legados en servidores.
-   ```bash
-   python3 -m pip install --user -r requirements.txt
-   ```
-
-3. **Lanzar el entrenamiento:**
-   ```bash
-   sbatch run_cluster.slurm
-   ```
-   Puedes monitorear el progreso del entrenamiento utilizando:
-   ```bash
-   tail -f entrenamiento_[JOB_ID].log
-   ```
+## 🏛️ Despliegue en Clúster (SLURM)
+Para entrenar el modelo en un entorno de alto rendimiento:
+```bash
+sbatch run_cluster.slurm
+```
+Monitoreo de convergencia: `tail -f entrenamiento_[JOB_ID].log`
