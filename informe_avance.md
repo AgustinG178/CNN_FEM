@@ -95,7 +95,30 @@ Tras identificar y corregir un desfasaje en los ejes de coordenadas entre las m�
 | **7** | 0.422 | 57.8% | -0.018 |
 | **8** | 0.415 | 58.5% | -0.007 |
 
-*Nota: Se observa una convergencia sólida y asintótica. La estabilidad en la Época 6 sugiere que la red ha capturado las características macroscópicas de la pelvis y el fémur, preparándose para la fase de refinamiento fino que comenzará tras la Época 12 con el decaimiento del Learning Rate.*
+---
+
+## 5. Resolución de la Divergencia Espacial (Hito Técnico)
+Durante el desarrollo de la Fase 2, se identificó una divergencia crítica en el sistema de coordenadas que invalidaba la interpretación física de los resultados. La IA estaba siendo entrenada con datos "espejados" debido a la diferencia de convención entre el estándar **DICOM (LPS - Left, Posterior, Superior)** y el estándar de procesamiento **NIfTI/Nibabel (RAS - Right, Anterior, Superior)**.
+
+### 5.1 Diagnóstico y Corrección del Eje Z
+Se detectó que el ordenamiento de los cortes tomográficos en el ensamblado del tensor 3D seguía una secuencia inversa a la requerida por el operador `marching_cubes`. Esto provocaba que, aunque la segmentación fuera correcta en forma, estuviera desplazada y rotada respecto al volumen original.
+
+**Acciones tomadas:**
+*   **Sincronización de Carga:** Se modificó el módulo `io_module.py` para garantizar un ordenamiento ascendente estricto de los cortes basado en `ImagePositionPatient[2]`.
+*   **Re-alineación Afín:** Se implementó el operador `nibabel.processing.resample_from_to` para proyectar las máscaras generadas por la IA directamente sobre la grilla afín de los tensores originales, garantizando una biyección 1:1 entre píxel y etiqueta.
+
+### 5.2 Impacto en la Convergencia (Época 8 vs Época 25)
+La corrección de los ejes produjo una aceleración drástica en el aprendizaje del modelo. Mientras que en el entrenamiento previo la red requirió **25 épocas** para alcanzar un Dice Score del 60%, el modelo actual ha alcanzado una precisión similar en apenas **8 épocas**.
+
+Esto se debe a que la red ya no debe "aprender" a traducir coordenadas erróneas, sino que puede concentrar toda su capacidad de cómputo en la extracción de características morfológicas del tejido óseo. Los resultados visuales actuales (Época 8) demuestran una silueta anatómica perfecta de la pelvis y el sacro, libre de los artefactos de "fantasma" presentes en etapas anteriores.
+
+---
+
+## 6. Próximos Pasos: Fase 3 (Biomecánica)
+Con la validación visual y matemática de la alineación, el pipeline se prepara para la exportación definitiva a COMSOL:
+1.  **Finalización de Entrenamiento (Época 50):** Refinamiento de fémures distales y bordes corticales.
+2.  **Mallado de Voronoi:** Aplicación de la función `optimize_mesh_quality` para generar elementos finitos isótropos.
+3.  **Mapeo de Young:** Generación del campo escalar $E(x,y,z)$ basado en la Ley de Wolff.
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
 

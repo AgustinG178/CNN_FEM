@@ -49,6 +49,12 @@ def main():
         return_probabilities=True
     )
     
+    # 1.5 FILTRO FÍSICO (Ayuda a la IA a ignorar tejidos blandos/piel)
+    print(f"-> Aplicando filtro de densidad ósea (> {HU_THRESHOLD} HU)...")
+    X_orig = assemble_tensor_and_hu(DIR_PACIENTE)
+    # Si la densidad es menor al umbral, bajamos la probabilidad de la IA a 0
+    prob_volume[X_orig < HU_THRESHOLD] = 0
+    
     # 2. Uso de la probabilidad de la red (IA decide el umbral)
     print("-> Analizando histograma de probabilidades (IA buscando umbral óptimo)...")
     # Tomamos solo las probabilidades que no sean cero para el cálculo
