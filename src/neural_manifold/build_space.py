@@ -21,7 +21,9 @@ def build_training_manifold(
     os.makedirs(os.path.join(output_dir, "tensors"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "masks"), exist_ok=True)
     
-    patient_ids = [d for d in os.listdir(raw_qct_dir) if os.path.isdir(os.path.join(raw_qct_dir, d))]
+    patient_ids = [d for d in os.listdir(raw_qct_dir) 
+                   if os.path.isdir(os.path.join(raw_qct_dir, d)) and 
+                   (d.startswith("Paciente") or d.startswith("Fantoma"))]
     
     # --- Lógica de Partición Train/Test ---
     # Aseguramos que los Fantomas estén en test para validar el pipeline FEM después

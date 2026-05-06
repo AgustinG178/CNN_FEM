@@ -138,4 +138,3 @@ if __name__ == "__main__":
     )
     
     execute_optimization_manifold(train_loader, epochs=50, learning_rate=1e-3)
-50, learning_rate=1e-3)

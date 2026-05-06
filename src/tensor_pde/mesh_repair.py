@@ -2,6 +2,8 @@ import trimesh
 import numpy as np
 from scipy.ndimage import binary_closing, generate_binary_structure, gaussian_filter
 from skimage import measure
+import pyacvd
+import pyvista as pv
 
 def seal_geometry(input_stl: str, output_stl: str, pitch: float = 2.0, smooth_iters: int = 15) -> None:
     r"""
@@ -45,3 +47,18 @@ def seal_geometry(input_stl: str, output_stl: str, pitch: float = 2.0, smooth_it
         raise RuntimeError("Singularidad topológica: La variedad extraída intersecta el infinito o presenta asimetrías de adyacencia.")
         
     sealed_mesh.export(output_stl)
+
+def optimize_mesh_quality(mesh_trimesh: trimesh.Trimesh, target_n_vertices: int = 15000) -> trimesh.Trimesh:
+    r"""
+    Aplica una partición de Voronoi sobre la variedad \partial \Omega 
+    para garantizar isotropía en los tensores de deformación locales.
+    Esto mejora drásticamente la convergencia en el mallado volumétrico de COMSOL.
+    """
+    pv_mesh = pv.wrap(mesh_trimesh)
+    clus = pyacvd.Clustering(pv_mesh)
+    clus.subdivide(3) 
+    clus.cluster(target_n_vertices)
+    optimized_pv_mesh = clus.create_mesh()
+    
+    return trimesh.Trimesh(vertices=optimized_pv_mesh.points, 
+                           faces=optimized_pv_mesh.faces.reshape(-1, 4)[:, 1:])

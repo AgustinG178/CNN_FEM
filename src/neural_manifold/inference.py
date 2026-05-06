@@ -96,7 +96,7 @@ def predict_volume_from_dicom(
         patch_overlap=patch_overlap,
     )
     patch_loader = torch.utils.data.DataLoader(grid_sampler2, batch_size=4)
-    aggregator = tio.inference.GridAggregator(grid_sampler2, overlap_mode='hann')
+    aggregator = tio.inference.GridAggregator(grid_sampler2, overlap_mode='average')
     
     # 4. Inferencia Local iterativa
     print(f"-> Computando inferencia topológica mediante parches deslizantes {patch_size}...")

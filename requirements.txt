@@ -1,0 +1,11 @@
+torch>=2.0.0
+torchvision
+torchio>=0.18.90
+numpy
+pydicom
+scikit-image
+trimesh
+matplotlib
+pandas
+scipy
+nibabel

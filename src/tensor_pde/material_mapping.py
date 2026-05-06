@@ -1,10 +1,16 @@
 import numpy as np
 import nibabel as nib
 
-def generate_comsol_material_field(nifti_path, output_txt, a=0.0, b=0.001, c=15000, d=2):
+def generate_comsol_material_field(nifti_path: str, output_txt: str, a: float = 0.0, b: float = 0.001, c: float = 15000.0, d: int = 2):
     r"""
-    Genera un campo escalar E(x,y,z) para COMSOL.
-    Mapping: HU -> rho_app -> E.
+    Genera un campo escalar heterogéneo E(x,y,z) compatible con COMSOL Multiphysics.
+    Utiliza una biyección bilineal para transformar Unidades Hounsfield (HU) en 
+    densidad aparente \rho, y aplica la Ley de Wolff (relación potencial) para 
+    derivar el Módulo de Young local.
+    
+    Parámetros físicos por defecto:
+    - a, b: Coeficientes de calibración HU -> \rho (g/cm^3)
+    - c, d: Parámetros de rigidez ósea (E = c * \rho^d)
     """
     img = nib.load(nifti_path)
     data = img.get_fdata()

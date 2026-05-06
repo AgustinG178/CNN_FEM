@@ -18,6 +18,7 @@ Automatizacion FEM/
 │   ├── 02_processed/           # Mallas STL, NIfTI y mapas de materiales generados
 │   ├── 03_models/              # Pesos pre-entrenados de la red (.pth por época)
 │   └── 04_training_patches/    # Tensores 3D extraídos y filtrados (Negative Sampling)
+├── scripts/                    # Herramientas de diagnóstico, limpieza y fix de datos
 ├── src/                        # Código fuente modular
 │   ├── neural_manifold/        # Módulo IA: UNet3D, Inferencia, Dataset, Loss y Segmentación
 │   │   ├── unet_topology.py    #   Arquitectura de la Red Neuronal Convolucional 3D
@@ -30,11 +31,9 @@ Automatizacion FEM/
 │       ├── material_mapping.py  #   Biyección HU → ρ → E (Módulo de Young)
 │       ├── mesh_repair.py       #   Cierre topológico (Watertight) para FEM
 │       └── io_module.py         #   Ensamblado de tensores DICOM y matrices afines
-├── logs/                       # Registros (Logs) de salida del clúster HPC
 ├── main.py                     # Orquestador principal del pipeline completo (Fase 1→3)
-├── comparar_epocas.py          # Visualización evolutiva del aprendizaje (Mapas de Calor)
 ├── prepare_dataset.py          # Script de limpieza y generación de parches
-├── requirements_cluster.txt    # Dependencias exactas para HPC (Python 3.6+)
+├── requirements.txt            # Dependencias actualizadas para entorno local y clúster
 ├── run_cluster.slurm           # Orquestador de trabajos para SLURM
 ├── informe_avance.md           # Informe científico con justificación matemática
 └── README.md                   # Esta guía
@@ -93,14 +92,14 @@ Este pipeline está fuertemente optimizado para ser ejecutado en nodos de superc
 2. **Instalar Dependencias:**
    Asegúrate de utilizar las versiones exactas provistas para garantizar la compatibilidad de PyTorch y Torchio con intérpretes Python legados en servidores.
    ```bash
-   python3 -m pip install --user -r requirements_cluster.txt
+   python3 -m pip install --user -r requirements.txt
    ```
 
 3. **Lanzar el entrenamiento:**
    ```bash
    sbatch run_cluster.slurm
    ```
-   Puedes monitorear el progreso y la caída de la función de pérdida matemática (*Dice Loss*) utilizando:
+   Puedes monitorear el progreso del entrenamiento utilizando:
    ```bash
-   tail -f logs/entrenamiento_[#Reemplazar el '#' y los corchetes [] con el id asignado por SLURM en la salida del comando anterior, e.g., 92456, esto puede visualizarse usando el comando "squeue" para ver la lista completa o "squeue -u $USER" para rastear el usuario concreto que se busca, en este caso el nuestro, e.g. "tail -f logs/entrenamiento_92456.log"].log
+   tail -f entrenamiento_[JOB_ID].log
    ```

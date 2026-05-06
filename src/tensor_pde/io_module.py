@@ -72,7 +72,7 @@ def assemble_tensor_and_hu(directory_path: str) -> np.ndarray:
     
     homogeneous_slices = [s for s in slices if s.Rows == valid_rows and s.Columns == valid_cols]
     
-    homogeneous_slices.sort(key=lambda s: s.ImagePositionPatient[2], reverse=True)
+    homogeneous_slices.sort(key=lambda s: s.ImagePositionPatient[2], reverse=False)
     
     N_x = homogeneous_slices[0].Rows
     N_y = homogeneous_slices[0].Columns

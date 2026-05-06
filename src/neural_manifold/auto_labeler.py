@@ -70,12 +70,19 @@ def generate_ground_truth_for_all_patients(raw_dir: str, out_dir: str):
                 # 4. Fusión de máscaras
                 Y_tensor = np.zeros_like(X_tensor, dtype=np.float32)
                 
+                # Definimos el NIfTI de referencia (el que creamos nosotros)
+                ref_img = nifti_img
+                
                 found_any = False
                 for anatomy in ANATOMY_LABELS:
                     mask_file = os.path.join(seg_output, f"{anatomy}.nii.gz")
                     if os.path.exists(mask_file):
                         mask_img = nib.load(mask_file)
-                        anatomy_mask = mask_img.get_fdata()
+                        
+                        # ALINEACIÓN GARANTIZADA: Re-muestrear la máscara al espacio del CT original
+                        from nibabel.processing import resample_from_to
+                        resampled_mask_img = resample_from_to(mask_img, ref_img, order=0) # order=0 para etiquetas (nearest)
+                        anatomy_mask = resampled_mask_img.get_fdata()
                         
                         # Suma booleana (OR lógico)
                         Y_tensor += (anatomy_mask > 0).astype(np.float32)

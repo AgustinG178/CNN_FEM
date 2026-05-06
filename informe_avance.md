@@ -76,35 +76,26 @@ $$
 
 ## 3. Estado Actual y Conclusión
 * **Datos procesados:** 61 pacientes escaneados, particionados y limpiados. Se ha reservado un conjunto estricto de pacientes y fantomas (modelos físicos) que la IA no verá durante el entrenamiento, para poder realizarle un "examen final" objetivo.
-* **Cómputo:** El entrenamiento se encuentra en proceso en particiones exclusivas de alta prioridad de la FIUNER, con guardados de seguridad automáticos. A la época 5, el Dice Score alcanza el 57.2%.
-* **Pipeline End-to-End:** El código de la Fase 3 (separación anatómica por Componentes Conexos, sellado topológico Watertight, exportación NIfTI y mapeo de rigidez heterogénea) se encuentra completamente implementado y listo para ejecutarse una vez finalizado el entrenamiento.
+* **Cómputo:** El entrenamiento se encuentra en proceso en particiones exclusivas de alta prioridad de la FIUNER, con guardados de seguridad automáticos. Tras una corrección crítica en la alineación de coordenadas (sincronización LPS/RAS), el modelo actual demuestra una convergencia sumamente estable. A la época 8, el Dice Score alcanza el 58.5%.
+* **Pipeline End-to-End:** El código de la Fase 3 (separación anatómica por Componentes Conexos, sellado topológico Watertight, exportación NIfTI y mapeo de rigidez heterogénea) se encuentra completamente implementado y validado mediante "sanity checks" de alineación.
 
 ---
 
-## 4. Resultados Preliminares del Entrenamiento
-A la fecha de redacción de este informe, el modelo se encuentra en su fase de entrenamiento en el clúster. La convergencia inicial de la función de pérdida ($\mathcal{L}_{Dice}$) demuestra un rápido aprendizaje topológico por parte de la red durante las primeras épocas:
+## 4. Resultados del Entrenamiento Definitivo (Post-Corrección)
+Tras identificar y corregir un desfasaje en los ejes de coordenadas entre las máscaras y los tensores (espejado horizontal y vertical), se reinició el entrenamiento. Los nuevos resultados muestran una curva de aprendizaje mucho más coherente con la anatomía humana:
 
 | Época | $\mathcal{L}_{Dice}$ (Error Promedio) | Dice Score (Precisión) | Mejora ($\Delta$) |
 | :---: | :---: | :---: | :---: |
-| **1** | 0.611 | 38.9% | - |
-| **2** | 0.501 | 49.9% | -0.110 |
-| **3** | 0.458 | 54.2% | -0.043 |
-| **4** | 0.443 | 55.7% | -0.015 |
-| **5** | 0.428 | 57.2% | -0.015 |
-| **6** | 0.415 | 58.5% | -0.013 |
-| **7** | 0.410 | 59.0% | -0.006 |
-| **8** | 0.397 | 60.3% | -0.013 |
-| **9** | 0.386 | 61.4% | -0.011 |
-| **10** | 0.389 | 61.1% | +0.003 |
-| **11** | 0.380 | 62.0% | -0.009 |
-| **12** | 0.372 | 62.8% | -0.008 |
-| **13** | 0.369 | 63.1% | -0.003 |
-| **14** | 0.362 | 63.8% | -0.007 |
-| **15** | 0.359 | 64.1% | -0.003 |
-| **16** | 0.357 | 64.3% | -0.002 |
-| **17** | 0.355 | 64.5% | -0.002 |
-| **18** | 0.348 | 65.2% | -0.007 |
-| **19** | 0.343 | 65.7% | -0.005 |
+| **1** | 0.636 | 36.4% | - |
+| **2** | 0.535 | 46.5% | -0.101 |
+| **3** | 0.481 | 51.9% | -0.054 |
+| **4** | 0.455 | 54.5% | -0.026 |
+| **5** | 0.444 | 55.6% | -0.011 |
+| **6** | 0.440 | 56.0% | -0.004 |
+| **7** | 0.422 | 57.8% | -0.018 |
+| **8** | 0.415 | 58.5% | -0.007 |
+
+*Nota: Se observa una convergencia sólida y asintótica. La estabilidad en la Época 6 sugiere que la red ha capturado las características macroscópicas de la pelvis y el fémur, preparándose para la fase de refinamiento fino que comenzará tras la Época 12 con el decaimiento del Learning Rate.*
 
 *El delta promedio de convergencia se calculará una vez estabilizado el gradiente inicial, proyectando alcanzar un Dice Score superior al 85% para la Época 50.*
 

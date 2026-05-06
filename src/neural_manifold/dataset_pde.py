@@ -39,6 +39,10 @@ class HybridLoss(nn.Module):
         return self.alpha * dice_loss + (1.0 - self.alpha) * ce_loss
 
 class DiceLoss(nn.Module):
+    r"""
+    Computa el error topológico mediante el coeficiente de Dice diferenciable.
+    \mathcal{L}_{Dice} = 1 - \frac{2|X \cap Y| + \epsilon}{|X| + |Y| + \epsilon}
+    """
     def __init__(self, smooth=1.0):
         super(DiceLoss, self).__init__()
         self.smooth = smooth

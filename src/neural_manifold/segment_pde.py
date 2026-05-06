@@ -32,9 +32,8 @@ def extract_boundary_manifold(X_tensor: np.ndarray, tau: float, spacing: tuple) 
 
 import os
 import nibabel as nib
-from src.isolate_main import optimize_mesh_quality
+from src.tensor_pde.mesh_repair import optimize_mesh_quality, seal_geometry
 from src.tensor_pde.io_module import extract_affine_matrix
-from src.tensor_pde.mesh_repair import seal_geometry
 
 def process_and_save_dl_mesh(binary_mask: np.ndarray, dicom_dir: str, out_dir: str) -> None:
     r"""
