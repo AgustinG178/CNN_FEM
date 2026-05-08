@@ -12,6 +12,16 @@
 El pipeline se divide en tres niveles de abstracción. A continuación se detalla su estado de implementación real:
 
 ### Fase 1: Ingeniería de Datos (Completada)
+```mermaid
+graph LR
+    subgraph "Flujo de Preparación de Datos"
+    A[DICOMs Crudos] --> B[TotalSegmentator]
+    B --> C{Sincronización<br>Coordenadas}
+    C -->|Conversión LPS-RAS| D[Ground Truth Maestro]
+    D --> E[Particionador Espacial]
+    E --> F[(Super-Parches 128³)]
+    end
+```
 *   **Destilación de Etiquetas:** Procesamiento de 61 pacientes mediante autosegmentación (TotalSegmentator) para generar el Ground Truth maestro.
 *   **Corrección Espacial:** Sincronización de los ejes DICOM (LPS) y NIfTI (RAS), eliminando el error de "espejado" mediante operadores de re-muestreo afín (`resample_from_to`).
 *   **Particionamiento V2:** Generación de un nuevo dataset de parches isométricos de $128^3$ vóxeles, optimizando el contexto anatómico de la red.
