@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from src.neural_manifold.unet_topology import UNet3D
-from src.neural_manifold.dataset_pde import VolumetricBoneDataset, DiceLoss
+from src.neural_manifold.dataset_pde import VolumetricBoneDataset, FocalDiceLoss
 import os
 import glob
 import math
@@ -23,8 +23,8 @@ def execute_optimization_manifold(
     """
     device = torch.device(device_str if torch.cuda.is_available() else 'cpu')
     
-    model = UNet3D(in_channels=1, out_channels=1).to(device)
-    criterion = DiceLoss()
+    model = UNet3D(in_channels=1, out_channels=1, base_features=32).to(device)
+    criterion = FocalDiceLoss(alpha=0.8, gamma=2.0)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     
     # --- AUTO-RESUME LOGIC ---
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     dataset = VolumetricBoneDataset(tensor_paths, mask_paths)
     train_loader = DataLoader(
         dataset, 
-        batch_size=8, 
+        batch_size=2,  # Reducido por el enorme tamaño del parche 128^3 y base_features=32
         shuffle=True, 
         num_workers=4, 
         pin_memory=True

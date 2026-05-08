@@ -9,3 +9,7 @@ matplotlib
 pandas
 scipy
 nibabel
+TotalSegmentator
+pyacvd
+pyvista
+customtkinter

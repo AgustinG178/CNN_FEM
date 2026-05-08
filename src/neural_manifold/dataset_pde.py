@@ -57,6 +57,36 @@ class DiceLoss(nn.Module):
         
         return 1.0 - dice
 
+class FocalDiceLoss(nn.Module):
+    r"""
+    Combina Focal Loss (penaliza errores en píxeles difíciles/bordes finos)
+    con Dice Loss (optimización topológica global).
+    Esencial para que la red no ignore el hueso cortical delgado.
+    """
+    def __init__(self, alpha: float = 0.8, gamma: float = 2.0, smooth: float = 1.0):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.smooth = smooth
+
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        # Aplanar
+        inputs_flat = inputs.contiguous().view(-1)
+        targets_flat = targets.contiguous().view(-1)
+        
+        # 1. Dice Loss
+        intersection = (inputs_flat * targets_flat).sum()                            
+        dice_loss = 1.0 - (2. * intersection + self.smooth) / (inputs_flat.sum() + targets_flat.sum() + self.smooth)
+        
+        # 2. Focal Loss (Asume que 'inputs' ya pasó por una Sigmoid)
+        # BCE mide el error base, pt es la probabilidad de la clase correcta
+        bce = F.binary_cross_entropy(inputs_flat, targets_flat, reduction='none')
+        pt = torch.exp(-bce)
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce
+        focal_loss = focal_loss.mean()
+        
+        # Combinación lineal
+        return dice_loss + focal_loss
 class VolumetricBoneDataset(Dataset):
     r"""
     Dataset optimizado con aumento de datos elástico para 

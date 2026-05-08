@@ -26,6 +26,12 @@ Para que una red neuronal aprenda a reconocer huesos, primero necesita miles de 
 1. **Auto-Labeler (Destilación de Conocimiento):** Utilizamos una herramienta médica llamada *TotalSegmentator* para que escaneara a 61 pacientes automáticamente (58 de ellos provenientes de una base de datos pública de internet y 3 de origen local). La decisión de utilizar tomografías de la web radica en el bajo volumen del dataset original; al exponer a la red a tomógrafos de diferentes hospitales del mundo, garantizamos que el modelo sea **generalizable** y robusto para usarse en cualquier clínica a futuro. De aquí obtuvimos las "respuestas correctas" (Ground Truth).
 2. **Extracción en Parches (División 3D):** Una tomografía entera es demasiado grande para la memoria de una computadora. El código divide al paciente en miles de "cubitos" (parches de 64x64x64 píxeles).
 3. **Optimización Extrema (Negative Sampling):** Como la mayoría del cuerpo humano es músculo o aire, el sistema descarta matemáticamente el 95% de los cubitos vacíos, guardando únicamente aquellos donde existe hueso. 
+
+### 1.1 Definición de "Parches" (Sub-espacios Isométricos)
+Dado que una tomografía computarizada completa puede contener más de $512 \times 512 \times 300$ vóxeles, procesarla de forma monolítica excedería los límites de memoria del hardware. Por ello, el pipeline implementa una **Partición Espacial**:
+*   **Sub-volumen:** Se divide al paciente en cubos de $64^3$ vóxeles.
+*   **Isometría:** Al mantener dimensiones iguales en los tres ejes, garantizamos que la red aprenda características morfológicas sin distorsión.
+*   **Solapamiento (Overlap):** Los parches se extraen con un solapamiento para asegurar continuidad en las estructuras óseas.
 > [!TIP]
 > **Impacto del Negative Sampling:** Esta técnica redujo el peso de los datos de entrenamiento de **180 GB a menos de 30 GB**, ahorrando muchísimo tiempo y permitiendo que la red se enfoque únicamente en aprender sobre las estructuras óseas.
 
@@ -94,6 +100,19 @@ Tras identificar y corregir un desfasaje en los ejes de coordenadas entre las m�
 | **6** | 0.440 | 56.0% | -0.004 |
 | **7** | 0.422 | 57.8% | -0.018 |
 | **8** | 0.415 | 58.5% | -0.007 |
+| **9** | 0.412 | 58.8% | -0.003 |
+| **10** | 0.405 | 59.5% | -0.007 |
+| **11** | 0.397 | 60.3% | -0.008 |
+| **12** | 0.391 | 60.9% | -0.006 |
+| **13** | 0.383 | 61.7% | -0.008 |
+| **14** | 0.379 | 62.1% | -0.004 |
+| **15** | 0.379 | 62.1% | -0.000 |
+| **16** | 0.373 | 62.7% | -0.006 |
+| **17** | 0.368 | 63.2% | -0.005 |
+| **18** | 0.363 | 63.7% | -0.005 |
+| **19** | 0.358 | 64.2% | -0.005 |
+| **20** | 0.356 | 64.4% | -0.002 |
+| **21** | 0.352 | 64.8% | -0.004 |
 
 ---
 
@@ -130,18 +149,45 @@ Estas imágenes (disponibles en la carpeta `assets_informe/visuals_check/`) demu
 ![Ejemplo de Auditoría Visual: Sincronización perfecta de ejes](assets_informe/visuals_check/check_patch_000152.png)
 *(Imagen representativa de la galería de validación donde se observa el ajuste milimétrico de la máscara roja sobre el tejido óseo).*
 
-### 6.3 Inferencia Cualitativa (Época 8)
-Se realizó una prueba de inferencia completa sobre el **Paciente_52** (volumen no visto en entrenamiento) utilizando los pesos de la Época 8. A diferencia de los intentos previos, donde a esta altura solo se obtenía ruido amorfo:
+### 6.3 Inferencia Cualitativa y Diagnóstico Topológico (Época 21)
+Se realizó una prueba de inferencia completa sobre el **Paciente_52** (volumen no visto en entrenamiento) utilizando los pesos de la Época 21. Si bien se obtuvo una reconstrucción de la pelvis completa y el sacro, el modelo presentó una limitación estructural: la presencia de agujeros o vacíos en regiones donde el hueso cortical es extremadamente delgado (como las alas ilíacas).
 
-*   **Morfología Clara:** Se obtuvo una reconstrucción 3D nítida de la pelvis completa y el sacro.
-*   **Filtro de Densidad:** La aplicación de un umbral físico ($HU > 200$) eliminó exitosamente los falsos positivos de la piel y tejidos blandos, revelando una estructura ósea limpia y lista para el análisis topológico.
-*   **Eficiencia:** El archivo STL resultante presenta un peso de apenas 11 MB (comparado con los >900 MB de ruido de las versiones anteriores), lo que indica una alta selectividad de la red neuronal.
+![Curva de Pérdida - Prueba de Concepto V1](loss_curve.png)
+*(Gráfico de convergencia de la Prueba de Concepto Inicial, demostrando estabilización en ~0.35 Dice Loss).*
+
+Este fenómeno evidenció que la red clásica UNet3D (con parches de $64^3$) priorizaba la volumetría global, ignorando los micro-detalles topológicos finos que representan un bajo porcentaje del volumen total. Esto motivó la transición hacia una arquitectura de Estado del Arte (V2).
 
 ---
 
-## 7. Próximos Pasos: Fase 3 (Biomecánica)
-Con la validación visual y matemática de la alineación, el pipeline se prepara para la exportación definitiva a COMSOL:
-1.  **Finalización de Entrenamiento (Época 50):** Refinamiento de fémures distales y bordes corticales.
+## 7. Fase 2: Actualización Arquitectónica (Attention-ResUNet3D)
+Para mitigar la pérdida topológica en estructuras finas, se reescribió el motor de inferencia escalando la arquitectura a un modelo de "Nivel Producción" (V2).
+
+### 7.1 Reestructuración Espacial (Parches de 128³)
+Se modificó el algoritmo particionador (`build_space.py`) para extraer tensores de **$128 \times 128 \times 128$ vóxeles**.
+* **Impacto Dimensional:** Cada parche contiene ahora 2.09 millones de vóxeles (8 veces más que la V1).
+* **Contexto Anatómico:** Este "Lente Gran Angular" permite que la red observe la morfología ósea completa de una sola vez, comprendiendo la relación espacial entre estructuras gruesas y corticales finas.
+* **Eficiencia Computacional:** El número total de parches de entrenamiento se redujo drásticamente (de miles a $\sim236$), lo que maximiza la eficiencia del procesamiento vectorizado en CPU al manejar lotes (`batch_size=2`) densos y masivos.
+
+### 7.2 Topología de Red Avanzada
+Se inyectaron tres componentes propios del Estado del Arte (SOTA) en la red neuronal:
+1. **Bloques Residuales 3D:** Previenen la pérdida de gradientes finos (Vanishing Gradient) garantizando que la información topológica de alta frecuencia sobreviva hasta las últimas capas.
+2. **Attention Gates (Compuertas de Atención):** Un mecanismo matricial que genera "mapas de enfoque", suprimiendo activaciones en el ruido de fondo para concentrar el $100\%$ del esfuerzo computacional en los bordes del hueso cortical.
+3. **Instance Normalization:** Sustituye al BatchNorm clásico, otorgando mayor estabilidad estocástica dado el tamaño reducido del lote ($B=2$).
+
+### 7.3 Hibridación de la Función de Pérdida (Focal-Dice)
+El error fundamental de la V1 fue depender puramente del Coeficiente de Dice. Para la V2, se implementó una función matemática híbrida que combate el desbalance de clases masivo:
+
+$$
+\mathcal{L}_{Total} = \mathcal{L}_{Dice} + \alpha (1 - p_t)^\gamma \log(p_t)
+$$
+
+Al incorporar la **Focal Loss**, el optimizador penaliza de manera no-lineal y agresiva a la red neuronal cada vez que omite un "píxel difícil" (los bordes delgados). Esto obliga a la IA a cerrar los huecos topológicos en las alas ilíacas para lograr la convergencia matemática. Debido a esta suma, es esperado (y deseable) que la curva de pérdida inicial inicie por encima de $1.0$, descendiendo abruptamente a medida que la red mapea las nuevas directrices morfológicas.
+
+---
+
+## 8. Próximos Pasos: Fase 3 (Biomecánica)
+Con la validación de la nueva arquitectura V2, el pipeline se prepara para la exportación definitiva a COMSOL:
+1.  **Convergencia V2:** Estabilización de la red Attention-ResUNet3D y validación de cierre topológico en las alas ilíacas.
 2.  **Mallado de Voronoi:** Aplicación de la función `optimize_mesh_quality` para generar elementos finitos isótropos.
 3.  **Mapeo de Young:** Generación del campo escalar $E(x,y,z)$ basado en la Ley de Wolff.
 

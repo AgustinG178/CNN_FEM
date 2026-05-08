@@ -8,8 +8,8 @@ from src.neural_manifold.unet_topology import UNet3D
 def predict_volume_from_dicom(
     dicom_dir: str,
     model_path: str,
-    patch_size: tuple = (64, 64, 64),
-    patch_overlap: tuple = (16, 16, 16),
+    patch_size: tuple = (128, 128, 128),
+    patch_overlap: tuple = (32, 32, 32),
     device_str: str = 'cuda',
     return_probabilities: bool = False
 ) -> np.ndarray:
@@ -112,6 +112,15 @@ def predict_volume_from_dicom(
             
     # 5. Reconstrucción global
     predicted_volume = aggregator.get_output_tensor().squeeze().numpy()
+    
+    # --- FILTRO FÍSICO CRÍTICO ---
+    # Usamos el tensor original X_np (que escalamos de 0 a 1) para recuperar 
+    # la máscara de lo que NO es hueso físicamente (< 200 HU).
+    # Re-calculamos el umbral normalizado: (200 + 1000) / 4000 = 0.3
+    phys_bone_mask = (X_np > 0.3).squeeze()
+    predicted_volume[phys_bone_mask == 0] = 0.0
+    # -----------------------------
+    
     print("-> Reconstrucción del co-dominio espacial finalizada.")
     
     if return_probabilities:

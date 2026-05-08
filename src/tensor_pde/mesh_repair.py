@@ -50,15 +50,26 @@ def seal_geometry(input_stl: str, output_stl: str, pitch: float = 2.0, smooth_it
 
 def optimize_mesh_quality(mesh_trimesh: trimesh.Trimesh, target_n_vertices: int = 15000) -> trimesh.Trimesh:
     r"""
-    Aplica una partición de Voronoi sobre la variedad \partial \Omega 
-    para garantizar isotropía en los tensores de deformación locales.
-    Esto mejora drásticamente la convergencia en el mallado volumétrico de COMSOL.
+    Aplica una partición de Voronoi sobre la variedad \partial \Omega.
+    Optimizado para evitar desbordamientos de memoria y crashes en geometrías complejas.
     """
-    pv_mesh = pv.wrap(mesh_trimesh)
-    clus = pyacvd.Clustering(pv_mesh)
-    clus.subdivide(3) 
-    clus.cluster(target_n_vertices)
-    optimized_pv_mesh = clus.create_mesh()
-    
-    return trimesh.Trimesh(vertices=optimized_pv_mesh.points, 
-                           faces=optimized_pv_mesh.faces.reshape(-1, 4)[:, 1:])
+    try:
+        # Limpieza previa profunda
+        mesh_trimesh.process(validate=True)
+        
+        # Envoltorio PyVista
+        pv_mesh = pv.wrap(mesh_trimesh)
+        
+        # Ajuste dinámico de subdivisión para proteger la RAM
+        subdiv_level = 1 if len(mesh_trimesh.vertices) > 50000 else 2
+        
+        clus = pyacvd.Clustering(pv_mesh)
+        clus.subdivide(subdiv_level) 
+        clus.cluster(target_n_vertices)
+        optimized_pv_mesh = clus.create_mesh()
+        
+        return trimesh.Trimesh(vertices=optimized_pv_mesh.points, 
+                               faces=optimized_pv_mesh.faces.reshape(-1, 4)[:, 1:])
+    except Exception as e:
+        print(f"⚠️ Alerta: Falló la optimización de isotropía ({str(e)}). Devolviendo malla sellada estándar.")
+        return mesh_trimesh

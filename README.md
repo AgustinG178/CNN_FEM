@@ -9,7 +9,7 @@ Este repositorio contiene la arquitectura de software desarrollada para automati
 ## 🗂️ Estructura del Proyecto
 El código se organiza en módulos especializados por responsabilidad física y computacional:
 
-*   **`src/neural_manifold/`**: Motores de IA. Arquitectura UNet3D, lógica de ventana deslizante e inferencia topológica.
+*   **`src/neural_manifold/`**: Motores de IA. Arquitectura UNet3D, lógica de ventana deslizante e inferencia topológica mediante **parches 3D** (sub-volúmenes de $64^3$ vóxeles que permiten procesar tomografías de alta resolución por partes).
 *   **`src/tensor_pde/`**: Motores de Física. Mapeo HU → Young, reparación de mallas (Watertight) y optimización de calidad mediante partición de Voronoi.
 *   **`scripts/`**: Utilidades de validación rápida y generación de visuales para informes.
 

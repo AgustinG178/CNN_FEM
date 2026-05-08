@@ -12,10 +12,9 @@ from src.neural_manifold.inference import predict_volume_from_dicom
 from src.tensor_pde.io_module import assemble_tensor_and_hu, extract_affine_matrix
 import pydicom
 
-EPOCA = 8
+EPOCA = 21
 DIR_PACIENTE = "data/01_raw/Paciente_52"
-DIR_SALIDA = "data/02_processed/test_ep8"
-HU_THRESHOLD = 200 # Filtro para hueso real
+DIR_SALIDA = f"data/02_processed/test_ep{EPOCA}"
 MODEL_PATH = f"data/03_models/unet_bone_topology_ep{EPOCA}.pth"
 
 def encontrar_dicom_valido(dicom_dir: str) -> str:
@@ -40,7 +39,7 @@ def main():
         print(f"[!] ERROR: No existe el modelo en {MODEL_PATH}")
         return
 
-    # 1. Inferencia
+    # 1. Inferencia Pura (Confiamos en la red neuronal)
     print(f"-> Ejecutando inferencia sobre {DIR_PACIENTE}...")
     prob_volume = predict_volume_from_dicom(
         dicom_dir=DIR_PACIENTE,
@@ -49,27 +48,9 @@ def main():
         return_probabilities=True
     )
     
-    # 1.5 FILTRO FÍSICO (Ayuda a la IA a ignorar tejidos blandos/piel)
-    print(f"-> Aplicando filtro de densidad ósea (> {HU_THRESHOLD} HU)...")
-    X_orig = assemble_tensor_and_hu(DIR_PACIENTE)
-    # Si la densidad es menor al umbral, bajamos la probabilidad de la IA a 0
-    prob_volume[X_orig < HU_THRESHOLD] = 0
-    
-    # 2. Uso de la probabilidad de la red (IA decide el umbral)
-    print("-> Analizando histograma de probabilidades (IA buscando umbral óptimo)...")
-    # Tomamos solo las probabilidades que no sean cero para el cálculo
-    prob_samples = prob_volume[prob_volume > 0.05]
-    if len(prob_samples) > 1000:
-        tau = threshold_otsu(prob_samples)
-        # Ponemos un límite de seguridad: nunca menor a 0.3 ni mayor a 0.8
-        tau = max(0.3, min(tau, 0.8))
-    else:
-        tau = 0.5
-        
-    print(f"-> Umbral automático calculado por la IA: {tau:.3f}")
-    
-    # 3. Binarización inteligente
-    binary_mask = (prob_volume > tau).astype(np.float32)
+    # Binarización directa: la IA decide qué es hueso (Probabilidad > 50%)
+    print("-> Binarizando salida de la IA (Certeza > 50%)...")
+    binary_mask = (prob_volume > 0.5).astype(np.float32)
     
     # 4. Marching Cubes y STL (Optimizado)
     print("-> Generando Malla 3D...")
