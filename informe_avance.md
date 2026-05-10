@@ -52,7 +52,7 @@ La primera versión del modelo (V1) permitió validar el pipeline de datos pero 
 | **15** | 62.1% | +2.6% |
 | **21** | 64.8% | +2.7% |
 
-![Curva de Convergencia V1](loss_curve_V1.png)
+![Curva de Convergencia V1](assets_informe/loss_curve_V1.png)
 
 ### 2.2 Diagnóstico Cualitativo
 A pesar de la convergencia estable, el modelo V1 presentó "agujeros topológicos" en regiones corticales delgadas (como el ala ilíaca). Desde la perspectiva de la optimización convexa, el sistema se encontraba en un mínimo local donde la volumetría global dominaba sobre el detalle fino.
@@ -89,7 +89,17 @@ Como dicta la teoría de optimización, esto indujo un pico temporal en la funci
 
 La eficacia matemática de esta maniobra quedó demostrada de inmediato: al retomar el decaimiento *Cosine Annealing*, la red encontró un gradiente de descenso mucho más profundo. Para la **Época 55**, la Focal-Dice Loss se desplomó a **0.436**, con lotes individuales alcanzando una precisión inaudita de **0.148**. Esta trayectoria parabólica de alta aceleración asegura que para la Época 100 (aterrizando en un $\eta_{min} = 1\times10^{-6}$) el modelo habrá logrado un sellado topológico de grado médico definitivo.
 
-![Dinámica del Cosine Annealing y Warm Restarts](GraficaCoseine_Annealing.png)
+**Progreso de Convergencia Post-Restart (V2)**
+| Época | Dice Loss Promedio | Mejora ($\Delta$) |
+| :---: | :---: | :---: |
+| **39** | 0.557 | *Warm Restart Peak* |
+| **45** | 0.541 | -0.016 |
+| **50** | 0.501 | -0.040 |
+| **55** | 0.436 | -0.065 |
+
+![Curva de Convergencia V2](assets_informe/loss_curve.png)
+
+![Dinámica del Cosine Annealing y Warm Restarts](assets_informe/GraficaCoseine_Annealing.png)
 *Figura: Comportamiento del Learning Rate (línea azul) forzando el escape de mínimos locales, propiciando la caída asintótica de la pérdida (línea roja).*
 
 ---
