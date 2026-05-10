@@ -12,10 +12,18 @@ from src.neural_manifold.inference import predict_volume_from_dicom
 from src.tensor_pde.io_module import assemble_tensor_and_hu, extract_affine_matrix
 import pydicom
 
-EPOCA = 21
-DIR_PACIENTE = "data/01_raw/Paciente_52"
-DIR_SALIDA = f"data/02_processed/test_ep{EPOCA}"
-MODEL_PATH = f"data/03_models/unet_bone_topology_ep{EPOCA}.pth"
+import re
+
+def obtener_modelos_disponibles(models_dir="data/03_models"):
+    modelos = {}
+    if os.path.exists(models_dir):
+        for f in os.listdir(models_dir):
+            if f.startswith("unet_bone_topology_ep") and f.endswith(".pth"):
+                match = re.search(r"ep(\d+)", f)
+                if match:
+                    ep_num = int(match.group(1))
+                    modelos[ep_num] = os.path.join(models_dir, f)
+    return modelos
 
 def encontrar_dicom_valido(dicom_dir: str) -> str:
     for root, dirs, files in os.walk(dicom_dir):
@@ -30,6 +38,47 @@ def encontrar_dicom_valido(dicom_dir: str) -> str:
     return None
 
 def main():
+    modelos_dict = obtener_modelos_disponibles()
+    
+    if not modelos_dict:
+        print("[!] ERROR: No se encontraron modelos (.pth) en data/03_models/")
+        return
+        
+    print("\n=============================================")
+    print("        MODELOS DISPONIBLES PARA TEST        ")
+    print("=============================================\n")
+    
+    epocas = sorted(modelos_dict.keys())
+    columnas = 4
+    
+    # Formatear como tabla
+    for i in range(0, len(epocas), columnas):
+        fila = epocas[i:i+columnas]
+        print("  |  ".join([f"Época {ep:02d}" for ep in fila]))
+        
+    print("\n---------------------------------------------")
+    print("  [ 00 ] -> Cancelar y salir del script")
+    print("---------------------------------------------")
+        
+    try:
+        entrada = input("\nIngresa el número de época que deseas probar: ").strip()
+        
+        if entrada in ['00', '0']:
+            print("\n[!] Operación cancelada por el usuario. ¡Adiós!\n")
+            return
+            
+        EPOCA = int(entrada)
+        if EPOCA not in modelos_dict:
+            print(f"[!] ERROR: La época {EPOCA} no existe en la carpeta.")
+            return
+    except ValueError:
+        print("[!] ERROR: Debes ingresar un número entero válido.")
+        return
+
+    MODEL_PATH = modelos_dict[EPOCA]
+    DIR_PACIENTE = "data/01_raw/Paciente_52"
+    DIR_SALIDA = f"data/02_processed/test_ep{EPOCA}"
+    
     os.makedirs(DIR_SALIDA, exist_ok=True)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     

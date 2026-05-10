@@ -41,13 +41,13 @@ def execute_optimization_manifold(
         print("-> Iniciando entrenamiento desde cero.", flush=True)
     
     for epoch in range(start_epoch, epochs):
-        # --- PROGRAMACIÓN DEL LEARNING RATE (Cosine Annealing desde Ep 12) ---
+        # --- PROGRAMACIÓN DEL LEARNING RATE (Cosine Annealing desde Ep 30) ---
         current_lr = learning_rate
-        if epoch + 1 >= 12:
+        if epoch + 1 >= 30:
             eta_min = 1e-5
             eta_max = 1e-3
-            t_max = epochs - 12
-            t = (epoch + 1) - 12
+            t_max = epochs - 30
+            t = (epoch + 1) - 30
             current_lr = eta_min + 0.5 * (eta_max - eta_min) * (1 + math.cos(math.pi * t / t_max))
             
         for param_group in optimizer.param_groups:
@@ -137,4 +137,4 @@ if __name__ == "__main__":
         pin_memory=True
     )
     
-    execute_optimization_manifold(train_loader, epochs=50, learning_rate=1e-3)
+    execute_optimization_manifold(train_loader, epochs=100, learning_rate=1e-3)
