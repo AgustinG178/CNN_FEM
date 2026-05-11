@@ -3,7 +3,7 @@
 #SBATCH --partition=internos
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=32
 #SBATCH --mem=64G
 #SBATCH --output=training_v3_%j.log 
 #SBATCH --error=errores_training_v3_%j.err        
