@@ -97,41 +97,15 @@ def main():
         return_probabilities=True
     )
     
-    # Binarización directa: la IA decide qué es hueso (Probabilidad > 50%)
-    print("-> Binarizando salida de la IA (Certeza > 50%)...")
-    binary_mask = (prob_volume > 0.5).astype(np.float32)
+    # 2. Generación Geométrica Delegada
+    from src.fem_postprocessing.mesh_generation import process_and_save_dl_mesh
+    print("\n-> Delegando reconstrucción geométrica al motor FEM Post-Processing...")
+    process_and_save_dl_mesh(prob_volume, DIR_PACIENTE, DIR_SALIDA)
     
-    # 4. Marching Cubes y STL (Optimizado)
-    print("-> Generando Malla 3D...")
-    dcm_path = encontrar_dicom_valido(DIR_PACIENTE)
-    T = extract_affine_matrix(dcm_path)
-    spacing = tuple(np.linalg.norm(T[i, :3]) for i in range(3))
-    
-    verts, faces, normals, _ = marching_cubes(
-        volume=binary_mask, level=0.5, spacing=spacing, step_size=2
-    )
-    
-    mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals)
-    
-    # 5. Limpieza de ruido (Componentes Conexos)
-    print("-> Limpiando ruido (conservando solo componentes mayores)...")
-    # Filtramos por volumen: nos quedamos con lo que sea mayor al 5% del componente más grande
-    components = mesh.split(only_watertight=False)
-    if len(components) > 1:
-        max_vol = max(c.area for c in components) # Usamos área porque el volumen puede ser 0 en mallas no cerradas
-        mesh = trimesh.util.concatenate([c for c in components if c.area > max_vol * 0.1])
-        print(f"   Reducción de fragmentos: {len(components)} -> {len(mesh.faces)} caras finales")
-
-    # 6. Suavizado y exportación
-    print("-> Suavizado de Taubin...")
-    trimesh.smoothing.filter_taubin(mesh, iterations=10)
-    
-    out_file = os.path.join(DIR_SALIDA, f"resultado_ep{EPOCA}_Paciente_52_limpio.stl")
-    mesh.export(out_file)
-    
-    print(f"\n[✓] ¡ÉXITO! Modelo generado en: {out_file}")
-    print(f"    Tamaño: {os.path.getsize(out_file)/(1024*1024):.1f} MB")
-    print(f"    Vértices: {len(mesh.vertices)}")
+    out_file = os.path.join(DIR_SALIDA, "hueso_completo_FEM.stl")
+    if os.path.exists(out_file):
+        print(f"\n[✓] ¡ÉXITO! Modelo generado en: {out_file}")
+        print(f"    Tamaño: {os.path.getsize(out_file)/(1024*1024):.1f} MB")
 
 if __name__ == "__main__":
     main()

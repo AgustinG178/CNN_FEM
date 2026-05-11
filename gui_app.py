@@ -23,7 +23,7 @@ ctk.set_appearance_mode("Dark")
 # Importaciones locales del pipeline
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from src.neural_manifold.inference import predict_volume_from_dicom
-from src.neural_manifold.segment_pde import process_and_save_dl_mesh
+from src.fem_postprocessing.mesh_generation import process_and_save_dl_mesh
 
 def render_latex_to_ctk_image(latex_str, text_color="#00d2ff", font_size=14, width=300, height=80):
     """Renderiza una fórmula LaTeX a una imagen transparente usando Matplotlib."""

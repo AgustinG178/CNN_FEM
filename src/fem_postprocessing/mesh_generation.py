@@ -4,7 +4,7 @@ from skimage.filters import threshold_otsu
 import trimesh
 import os
 import pydicom
-from src.tensor_pde.mesh_repair import optimize_mesh_quality, seal_geometry
+from src.fem_postprocessing.topology_repair import optimize_mesh_quality, seal_geometry
 from src.tensor_pde.io_module import extract_affine_matrix, assemble_tensor_and_hu
 
 def process_and_save_dl_mesh(prob_volume: np.ndarray, dicom_dir: str, out_dir: str) -> None:

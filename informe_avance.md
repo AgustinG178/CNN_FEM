@@ -96,6 +96,9 @@ La eficacia matemática de esta maniobra quedó demostrada de inmediato: al reto
 | **45** | 0.541 | -0.016 |
 | **50** | 0.501 | -0.040 |
 | **55** | 0.436 | -0.065 |
+| **60** | 0.408 | -0.028 |
+| **64** | 0.400 | -0.008 |
+| **68** | 0.369 | -0.031 |
 
 ![Curva de Convergencia V2](assets_informe/loss_curve.png)
 
@@ -107,6 +110,13 @@ La eficacia matemática de esta maniobra quedó demostrada de inmediato: al reto
 ## 4. Fase 3: Integración Biomecánica y Elementos Finitos (FEM)
 El software traduce la segmentación en un modelo físico heterogéneo listo para COMSOL Multiphysics:
 
+### 4.1 Arquitectura Modular de Post-Procesamiento (`fem_postprocessing`)
+Para garantizar la estricta integridad matemática requerida por los solvers FEM, se refactorizó la arquitectura del código, aislando completamente la inferencia probabilística (IA) de la reparación geométrica (Física):
+*   Se centralizó toda la lógica en el nuevo módulo `src/fem_postprocessing/`.
+*   Tanto `test_inference.py` como la Interfaz Gráfica (`gui_app.py`) ahora delegan la generación de la malla, umbralización de Otsu, limpieza de islas y suavizado de Taubin al script dedicado `mesh_generation.py`.
+*   Esta separación de conceptos (*Separation of Concerns*) prepara el terreno para acoplar algoritmos avanzados de remallado isotrópico sin contaminar el entorno de Deep Learning.
+
+### 4.2 Flujo Teórico de Elementos Finitos
 1.  **Sellado Watertight:** Garantiza que $\partial \Omega$ sea una 2-variedad cerrada (Teorema de la Frontera).
 2.  **Mapeo de Young ($E$):** Basado en la Ley de Wolff:
     $$ \rho = a \times \text{HU} + b \implies E = C \times \rho^n $$
