@@ -1,0 +1,32 @@
+# Roadmap V3.0: Integración de TotalSegmentator
+
+La propuesta de reciclar recursos de **TotalSegmentator** (código abierto, licencia Apache 2.0) es brillante y es el paso lógico para escalar BoneFlow AI a nivel comercial/mundial. TotalSegmentator está construido sobre el framework `nnU-Net` y tiene sus recursos públicos en GitHub y Zenodo.
+
+## 1. Expansión Masiva del Dataset (Zenodo)
+
+TotalSegmentator publicó en Zenodo un dataset de más de **1204 tomografías (CT)** completamente etiquetadas por expertos, con 117 clases anatómicas.
+*   **Viabilidad:** Totalmente viable. Podemos descargar estos datos y usarlos.
+*   **Estrategia:** No necesitamos las 117 clases. Desarrollaremos un script en `prepare_dataset.py` para descargar las NIfTI (`.nii.gz`), extraer únicamente las etiquetas que nos importan (`pelvis`, `sacrum`, `femur_left`, `femur_right`), colapsarlas en una máscara binaria de hueso, y sumarlas a nuestro clúster.
+*   **Impacto:** Pasaríamos de entrenar con ~20 pacientes a más de 1200, garantizando que la IA nunca más sufra con variaciones anatómicas extremas.
+
+## 2. Reciclaje de Post-Procesamiento
+
+Tenemos que hacer una distinción técnica clave: TotalSegmentator devuelve **vóxeles** (archivos NIfTI), mientras que nosotros necesitamos **superficies matemáticas continuas** (STL) para Elementos Finitos (FEM).
+*   **Lo que NO nos sirve:** TotalSegmentator no sabe hacer *Marching Cubes*, suavizado de Taubin, ni remallado de Voronoi. Ellos frenan antes del mundo 3D.
+*   **Lo que SÍ nos sirve:** Tienen algoritmos morfológicos muy robustos en su librería base (`totalsegmentator.libs`) para lidiar con el ruido de las predicciones en el espacio de los vóxeles (usando `SimpleITK` o `nibabel`) *antes* de que nosotros extraigamos la malla.
+
+## Proposed Changes para V3
+
+### [NEW] `scripts/ingest_totalsegmentator.py`
+- Script para conectarse a la API de Zenodo, descargar el dataset público de TotalSegmentator y mapear las etiquetas pélvicas a nuestro formato de tensores PyTorch.
+
+### [MODIFY] `src/fem_postprocessing/mesh_generation.py`
+- Integrar filtros morfológicos volumétricos (cierre topológico 3D sobre el `prob_volume`) inspirados en el post-procesamiento de nnU-Net, ejecutándose antes del *Marching Cubes*.
+
+## Open Questions
+
+> [!WARNING]
+> **Requerimientos de Almacenamiento:** El dataset completo de TotalSegmentator pesa cientos de Gigabytes. ¿Disponemos del espacio en el disco del clúster (nodo13) para almacenar 1200 tomografías de cuerpo entero antes de recortarlas?
+
+> [!TIP]
+> Si aprobás esta visión para la V3, la dejamos asentada formalmente en el `informe_avance.md` como el siguiente gran hito estratégico, mientras esperamos a que termine tu época 100.

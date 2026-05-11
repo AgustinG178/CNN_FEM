@@ -13,29 +13,9 @@ def process_and_save_dl_mesh(prob_volume: np.ndarray, dicom_dir: str, out_dir: s
     """
     os.makedirs(out_dir, exist_ok=True)
     
-    # 1. Filtro Físico (HU > 200) - Recuperamos datos crudos
-    print("-> Aplicando filtro de densidad física (HU)...")
-    X_orig = assemble_tensor_and_hu(dicom_dir)
-    # Sincronizamos dimensiones por si hubo algún padding
-    if X_orig.shape != prob_volume.shape:
-        # Si hay diferencia, tomamos el centro o ajustamos
-        from scipy.ndimage import zoom
-        factors = [p/o for p, o in zip(prob_volume.shape, X_orig.shape)]
-        X_orig = zoom(X_orig, factors, order=1)
-        
-    prob_volume[X_orig < 200] = 0
-    
-    # 2. Umbral Inteligente (Otsu)
-    print("-> Calculando umbral óptimo (Otsu)...")
-    prob_samples = prob_volume[prob_volume > 0.05]
-    if len(prob_samples) > 1000:
-        tau = threshold_otsu(prob_samples)
-        tau = max(0.3, min(tau, 0.8)) # Límite de seguridad
-    else:
-        tau = 0.5
-    print(f"   [+] Umbral calculado: {tau:.3f}")
-    
-    # 3. Extracción de Malla
+    # 1. Binarización Directa (Confiamos en la IA V2)
+    print("-> Binarizando salida de la red (Certeza > 40%)...")
+    tau = 0.4
     binary_mask = (prob_volume > tau).astype(np.float32)
     
     dcm_path = None
@@ -53,19 +33,24 @@ def process_and_save_dl_mesh(prob_volume: np.ndarray, dicom_dir: str, out_dir: s
     T = extract_affine_matrix(dcm_path)
     spacing = tuple(np.linalg.norm(T[i, :3]) for i in range(3))
     
-    print("-> Generando Malla 3D (Marching Cubes)...")
+    # 2. Generación Malla 3D en Alta Resolución (step_size=1)
+    print("-> Generando Malla 3D en Alta Resolución (Marching Cubes)...")
     verts, faces, normals, _ = marching_cubes(
-        volume=binary_mask, level=0.5, spacing=spacing, step_size=2
+        volume=binary_mask, level=0.5, spacing=spacing, step_size=1
     )
     
     mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals)
     
-    # 4. Limpieza de Islas
-    print("-> Limpiando fragmentos huérfanos...")
+    # 4. Limpieza de Islas Inteligente (Top N componentes)
+    print("-> Limpiando ruido (conservando los 5 componentes anatómicos más grandes)...")
     components = mesh.split(only_watertight=False)
-    if len(components) > 1:
-        max_area = max(c.area for c in components)
-        mesh = trimesh.util.concatenate([c for c in components if c.area > max_area * 0.1])
+    if len(components) > 5:
+        # Ordenar componentes por área usando sorted() ya que components es un array de numpy
+        sorted_components = sorted(components, key=lambda c: c.area, reverse=True)
+        # Quedarnos solo con el Top 5 (Pelvis, Sacro, Fémures, etc.)
+        mesh = trimesh.util.concatenate(sorted_components[:5])
+    elif len(components) > 1:
+        mesh = trimesh.util.concatenate(components)
 
     # 5. Optimización e Isotropía
     print("-> Optimizando isotropía (Voronoi 20k)...")

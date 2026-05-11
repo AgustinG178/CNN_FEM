@@ -2,8 +2,13 @@ import trimesh
 import numpy as np
 from scipy.ndimage import binary_closing, generate_binary_structure, gaussian_filter
 from skimage import measure
-import pyacvd
-import pyvista as pv
+
+try:
+    import pyacvd
+    import pyvista as pv
+    HAS_PYACVD = True
+except ImportError:
+    HAS_PYACVD = False
 
 def seal_geometry(input_stl: str, output_stl: str, pitch: float = 2.0, smooth_iters: int = 15) -> None:
     r"""
@@ -53,6 +58,10 @@ def optimize_mesh_quality(mesh_trimesh: trimesh.Trimesh, target_n_vertices: int 
     Aplica una partición de Voronoi sobre la variedad \partial \Omega.
     Optimizado para evitar desbordamientos de memoria y crashes en geometrías complejas.
     """
+    if not HAS_PYACVD:
+        print("⚠️ Aviso: Librerías gráficas VTK (pyacvd/pyvista) no disponibles en este nodo. Saltando remallado isotrópico.")
+        return mesh_trimesh
+
     try:
         # Limpieza previa profunda
         mesh_trimesh.process(validate=True)

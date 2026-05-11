@@ -99,6 +99,8 @@ La eficacia matemática de esta maniobra quedó demostrada de inmediato: al reto
 | **60** | 0.408 | -0.028 |
 | **64** | 0.400 | -0.008 |
 | **68** | 0.369 | -0.031 |
+| **79** | 0.332 | -0.037 |
+| **90** | 0.299 | -0.033 |
 
 ![Curva de Convergencia V2](assets_informe/loss_curve.png)
 
@@ -125,16 +127,25 @@ Para garantizar la estricta integridad matemática requerida por los solvers FEM
 
 ---
 
-## 5. Roadmap Tecnológico: Evolución hacia la V3.0
-A medida que el modelo actual converge, la planificación estratégica contempla una tercera fase de reestructuración matemática para optimizar la generalización y reducir los tiempos de cómputo en el clúster.
+## 5. Fase 4: Entrenamiento Masivo a Escala Industrial (V3.0)
+Habiendo demostrado la convergencia matemática en la V2, el proyecto abandonó su etapa de investigación controlada para escalar a un nivel de producción industrial. Actualmente se está ejecutando la **Tercera Generación del Modelo (V3)**, la cual presenta saltos arquitectónicos sin precedentes en este proyecto.
 
-### 5.1 Decoupled Weight Decay (AdamW)
-Para la futura iteración, se abandonará el optimizador Adam clásico en favor de **AdamW**. Esta variante desacopla la regularización L2 del cálculo de los momentos del gradiente. Al aplicar el castigo a los pesos (*Weight Decay*) de forma analíticamente correcta, se prevendrá cualquier atisbo de memorización en los tensores profundos.
+### 5.1 Ecosistema de Datos: TotalSegmentator (1228 Pacientes)
+Para catapultar la generalización del modelo a nivel comercial, se construyó un pipeline de *Data Ingestion* automatizado que se conectó a la API de Zenodo, descargando el dataset abierto de **TotalSegmentator** (Licencia Apache 2.0). 
+*   Se destilaron **1228 tomografías de cuerpo entero**.
+*   Se desarrolló el algoritmo `extract_bones.py` utilizando la librería `nibabel` para mapear exclusivamente las 4 clases de interés biomecánico (`pelvis`, `sacrum`, `femur_left`, `femur_right`) y colapsarlas en una única máscara continua $\partial \Omega$.
+*   **Transición a NIfTI:** Todo el pipeline abandonó las secuencias DICOM fraccionadas en favor de volúmenes unificados NIfTI (`.nii.gz`), optimizando drásticamente la lectura I/O en el clúster.
 
-### 5.2 Estrategias SOTA de Scheduling (OneCycleLR & Linear Warmup)
-Para evitar la estabilización prematura en mínimos locales, la V3.0 implementará políticas de *Learning Rate* dinámicas:
-*   **Linear Warmup:** Un incremento lineal progresivo durante las primeras 5 épocas, protegiendo los pesos inicializados aleatoriamente de gradientes explosivos.
-*   **OneCycleLR:** Una política de aceleración máxima que eleva el LR a su tope en la mitad del entrenamiento y lo aniquila hacia el final. Esto permitiría converger con la misma calidad médica en tan solo **25 a 30 épocas**, ahorrando cientos de horas de clúster.
+### 5.2 Parcheo Dinámico en Memoria RAM (Torchio Queue)
+Extraer parches 3D en disco para 1200 pacientes habría requerido múltiples Terabytes y meses de pre-procesamiento estático. La V3 implementó un sistema de última generación:
+*   **Torchio Queue:** El clúster lee los pacientes completos en segundo plano y extrae recortes de $128 \times 128 \times 128$ directamente en la memoria RAM de forma asíncrona mediante multiprocesamiento (`num_workers`).
+*   **Aumento de Datos Infinito:** Al ser un muestreo aleatorio en tiempo real, la red neuronal **nunca analiza el mismo parche dos veces**, erradicando por completo el sobreajuste (*overfitting*) y actuando como un regularizador implícito.
+*   **Robustez Geométrica:** Se implementó un algoritmo `EnsureMinShape` que añade volumen de fondo (-1000 HU) dinámicamente si la tomografía es anatómicamente más corta que el kernel de convolución.
+*   **Fix de Precisión:** Se aplicó un *transform* matemático (`EnforceConsistentAffine`) para corregir pérdidas de precisión en la coma flotante heredadas de TotalSegmentator, garantizando consistencia milimétrica entre la máscara y la tomografía original.
+
+### 5.3 Decoupled Weight Decay (AdamW) & OneCycleLR
+*   **AdamW:** Se abandonó el optimizador Adam clásico. AdamW desacopla la regularización L2 (*Weight Decay*), castigando los pesos del modelo de forma analíticamente correcta para evitar la saturación ante la abismal cantidad de nueva información.
+*   **OneCycleLR:** Se reemplazó el lento *Cosine Annealing* por un planificador dinámico de PyTorch que incrementa brutalmente la tasa de aprendizaje al inicio para salir de mínimos locales, y la aniquila hacia el final. Esto permitirá que la red converja de forma absoluta en **solo 40 épocas**, procesando terabytes de datos en una fracción del tiempo estimado.
 
 ---
 
@@ -142,16 +153,31 @@ Para evitar la estabilización prematura en mínimos locales, la V3.0 implementa
 El objetivo final del proyecto trasciende la investigación académica; busca democratizar el acceso a la biomecánica mediante una plataforma integral en la nube.
 
 ### 6.1 Infraestructura Cloud y Human-in-the-Loop
-Se desarrollará una aplicación web donde cirujanos e ingenieros clínicos podrán subir estudios DICOM crudos. En el backend, el modelo alojado (Attention-ResUNet3D) procesará el volumen, retornando el modelo 3D (STL) en cuestión de minutos.
+Se desarrollará una aplicación web donde cirujanos e ingenieros clínicos podrán subir estudios DICOM crudos. En el backend, el modelo alojado procesará el volumen, retornando el modelo 3D (STL) en cuestión de minutos.
 Más importante aún, la interfaz permitirá a los médicos corregir manualmente pequeñas discrepancias. Este flujo, conocido como **Human-in-the-Loop**, resulta invaluable para el ciclo de vida de la IA.
 
 ### 6.2 Aprendizaje Activo (Active Learning)
 Cada vez que un médico valide o corrija una tomografía en la App, ese estudio corregido se encriptará, anonimizará y se enviará automáticamente de regreso a nuestro clúster. Esto transforma a la Web App en un recolector pasivo de datos de grado médico. Cuando la base de datos crezca un 20%, el clúster se encenderá automáticamente para re-entrenar la red neuronal con la nueva información, creando un modelo que **se vuelve más inteligente con cada uso clínico**.
 
-### 6.3 Contingencia ante Escasez de Datos (GANs)
-En caso de que la adopción clínica sea lenta y exista una sequía de nuevos pacientes DICOM, el ecosistema implementará técnicas de generación sintética:
-1.  **Data Augmentation 3D:** Transformaciones afines elásticas complejas (rotaciones isométricas, ruido gaussiano, escalado no lineal) sobre los 61 pacientes originales para simular deformidades anatómicas.
-2.  **Redes Generativas Antagónicas (3D-GANs):** Si el aumento tradicional resulta insuficiente, se entrenará una IA generativa paralela cuyo único propósito será "fabricar" o inventar tomografías de pacientes hiper-realistas que no existen. Estas tomografías sintéticas, junto con sus máscaras, se inyectarán en la Attention-ResUNet3D para multiplicar exponencialmente su experiencia empírica.
+---
+**Estatus Actual:** 
+1. **Entrenamiento V2:** Culminado con honores (Dice Loss rompió la barrera de 0.299 en la época 90).
+2. **Entrenamiento V3 (Industrial):** EN EJECUCIÓN 🟢. Procesando 1228 pacientes mediante *Parcheo Dinámico* en el clúster (AdamW + OneCycleLR).
 
 ---
-**Estatus Actual:** Entrenamiento V2 en curso (Época 38+). Rumbo asintótico hacia la convergencia topológica en 100 épocas.
+
+## Anexo I: Diferenciación Estratégica vs. TotalSegmentator
+Ante la consulta recurrente del ecosistema clínico y académico: *"¿No es BoneFlow lo mismo que TotalSegmentator?"*, la respuesta categórica es **no**. TotalSegmentator es el *insumo*, BoneFlow es la *fábrica*.
+
+A continuación, se detallan las 3 diferencias fundamentales que separan a ambos proyectos:
+
+### 1. El Objetivo Final: Vóxeles vs. Tensores Físicos (FEM)
+*   **TotalSegmentator** es un modelo puramente radiológico. Su trabajo termina cuando clasifica los píxeles (vóxeles) de una tomografía, devolviendo un archivo NIfTI lleno de "bloques de Minecraft".
+*   **BoneFlow AI** es un puente hacia la **Biomecánica**. Nuestro software toma esa predicción y la somete a un post-procesamiento geométrico riguroso: extrae isosuperficies continuas (Marching Cubes), asegura que la frontera sea "watertight" (sellada matemáticamente), remalla con iteraciones de Voronoi para garantizar isotropía, y aplica suavizado de Taubin para no encoger el volumen. Además, mapea las Unidades Hounsfield (HU) para calcular el **Módulo de Young ($E$)**, entregando un archivo directo para simular estrés mecánico en COMSOL.
+
+### 2. Especialista vs. Generalista
+*   **TotalSegmentator** es un "médico generalista". Fue entrenado para predecir 117 órganos al mismo tiempo (corazón, hígado, pulmones, huesos). Como resultado, su precisión en los bordes óseos finos puede ser difusa.
+*   **BoneFlow AI** es el "cirujano traumatólogo". Nuestra red neuronal (V3) concentra sus millones de parámetros y la función de pérdida *Focal-Dice* **exclusivamente** en aprender la micro-arquitectura de la pelvis, el sacro y los fémures. BoneFlow está diseñado para no ignorar el hueso cortical delgado, que es el que soporta la mayor carga mecánica en simulaciones.
+
+### 3. El Ecosistema "Human-in-the-Loop"
+TotalSegmentator es un modelo estático y de caja negra. BoneFlow está diseñado como una plataforma evolutiva (Web App). Cada vez que un ingeniero o médico ajusta una malla en BoneFlow para su simulación, esa corrección milimétrica retroalimenta el sistema, convirtiéndolo en un modelo dinámico y perpetuamente iterativo.

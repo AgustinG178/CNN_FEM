@@ -37,43 +37,54 @@ def encontrar_dicom_valido(dicom_dir: str) -> str:
                 except: continue
     return None
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser(description="Inferencia Post-Entrenamiento (FEM)")
+    parser.add_argument("--epoch", type=int, default=None, help="Número de época a procesar (Evita el menú interactivo para SLURM)")
+    args = parser.parse_args()
+
     modelos_dict = obtener_modelos_disponibles()
     
     if not modelos_dict:
         print("[!] ERROR: No se encontraron modelos (.pth) en data/03_models/")
         return
         
-    print("\n=============================================")
-    print("        MODELOS DISPONIBLES PARA TEST        ")
-    print("=============================================\n")
-    
-    epocas = sorted(modelos_dict.keys())
-    columnas = 4
-    
-    # Formatear como tabla
-    for i in range(0, len(epocas), columnas):
-        fila = epocas[i:i+columnas]
-        print("  |  ".join([f"Época {ep:02d}" for ep in fila]))
-        
-    print("\n---------------------------------------------")
-    print("  [ 00 ] -> Cancelar y salir del script")
-    print("---------------------------------------------")
-        
-    try:
-        entrada = input("\nIngresa el número de época que deseas probar: ").strip()
-        
-        if entrada in ['00', '0']:
-            print("\n[!] Operación cancelada por el usuario. ¡Adiós!\n")
-            return
-            
-        EPOCA = int(entrada)
+    if args.epoch is not None:
+        EPOCA = args.epoch
         if EPOCA not in modelos_dict:
-            print(f"[!] ERROR: La época {EPOCA} no existe en la carpeta.")
+            print(f"[!] ERROR: La época {EPOCA} pasada por argumento no existe.")
             return
-    except ValueError:
-        print("[!] ERROR: Debes ingresar un número entero válido.")
-        return
+    else:
+        print("\n=============================================")
+        print("        MODELOS DISPONIBLES PARA TEST        ")
+        print("=============================================\n")
+        
+        epocas = sorted(modelos_dict.keys())
+        columnas = 4
+        
+        for i in range(0, len(epocas), columnas):
+            fila = epocas[i:i+columnas]
+            print("  |  ".join([f"Época {ep:02d}" for ep in fila]))
+            
+        print("\n---------------------------------------------")
+        print("  [ 00 ] -> Cancelar y salir del script")
+        print("---------------------------------------------")
+            
+        try:
+            entrada = input("\nIngresa el número de época que deseas probar: ").strip()
+            
+            if entrada in ['00', '0']:
+                print("\n[!] Operación cancelada por el usuario. ¡Adiós!\n")
+                return
+                
+            EPOCA = int(entrada)
+            if EPOCA not in modelos_dict:
+                print(f"[!] ERROR: La época {EPOCA} no existe en la carpeta.")
+                return
+        except ValueError:
+            print("[!] ERROR: Debes ingresar un número entero válido.")
+            return
 
     MODEL_PATH = modelos_dict[EPOCA]
     DIR_PACIENTE = "data/01_raw/Paciente_52"
