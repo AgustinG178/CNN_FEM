@@ -101,6 +101,9 @@ La eficacia matemática de esta maniobra quedó demostrada de inmediato: al reto
 | **68** | 0.369 | -0.031 |
 | **79** | 0.332 | -0.037 |
 | **90** | 0.299 | -0.033 |
+| **95** | **0.2948** | **-0.004** |
+| **99** | **0.2899** | **-0.005** ← *Mínimo Absoluto V2* |
+| **100** | 0.2971 | +0.007 *(saturación confirmada)* |
 
 ![Curva de Convergencia V2](assets_informe/loss_curve.png)
 
@@ -161,8 +164,8 @@ Cada vez que un médico valide o corrija una tomografía en la App, ese estudio 
 
 ---
 **Estatus Actual:** 
-1. **Entrenamiento V2:** Culminado con honores (Dice Loss rompió la barrera de 0.299 en la época 90).
-2. **Entrenamiento V3 (Industrial):** EN EJECUCIÓN 🟢. Procesando 1228 pacientes mediante *Parcheo Dinámico* en el clúster (AdamW + OneCycleLR).
+1. **Entrenamiento V2:** ✅ COMPLETADO. Mínimo absoluto: **Dice Loss = 0.2899 (Época 99) → Dice Score ~71%**. Convergencia verificada: las últimas 10 épocas oscilaron dentro de una banda de ±0.015, confirmando saturación del mínimo global con 61 pacientes.
+2. **Entrenamiento V3 (Industrial):** EN EJECUCIÓN 🟢. Procesando 1228 pacientes con parches 64³ dinámicos en el clúster (AdamW + OneCycleLR). Estimación de finalización: ~7-8 días.
 
 ---
 

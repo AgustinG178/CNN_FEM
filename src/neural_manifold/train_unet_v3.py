@@ -20,7 +20,7 @@ def train_dynamic_v3(
     epochs: int = 40,
     max_lr: float = 1e-3,
     batch_size: int = 2,
-    patch_size: int = 128
+    patch_size: int = 64
 ):
     print("="*60)
     print(" INICIANDO ENTRENAMIENTO V3 (TOTAL SEGMENTATOR + TORCHIO QUEUE)")
@@ -102,7 +102,7 @@ def train_dynamic_v3(
     queue = tio.Queue(
         subjects_dataset,
         max_length=200,          # Máximo de parches en RAM al mismo tiempo
-        samples_per_volume=5,    # Extrae 5 parches por cada tomografía cargada
+        samples_per_volume=2,    # 2 parches por tomografía: balance velocidad/diversidad en CPU
         sampler=sampler,
         num_workers=6,           # Hilos de CPU preparando parches
         shuffle_subjects=True,
@@ -206,5 +206,5 @@ if __name__ == "__main__":
         epochs=40,
         max_lr=1e-3,
         batch_size=2,
-        patch_size=128
+        patch_size=64
     )
