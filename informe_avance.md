@@ -89,7 +89,9 @@ Como dicta la teoría de optimización, esto indujo un pico temporal en la funci
 
 La eficacia matemática de esta maniobra quedó demostrada de inmediato: al retomar el decaimiento *Cosine Annealing*, la red encontró un gradiente de descenso mucho más profundo. Para la **Época 55**, la Focal-Dice Loss se desplomó a **0.436**, con lotes individuales alcanzando una precisión inaudita de **0.148**. Esta trayectoria parabólica de alta aceleración asegura que para la Época 100 (aterrizando en un $\eta_{min} = 1\times10^{-6}$) el modelo habrá logrado un sellado topológico de grado médico definitivo.
 
-<center>**Progreso de Convergencia Post-Restart (V2)**
+**Progreso de Convergencia Post-Restart (V2)**
+<div align="center">
+
 | Época | Dice Loss Promedio | Mejora ($\Delta$) |
 | :---: | :---: | :---: |
 | **39** | 0.557 | *Warm Restart Peak* |
@@ -103,11 +105,17 @@ La eficacia matemática de esta maniobra quedó demostrada de inmediato: al reto
 | **90** | 0.299 | -0.033 |
 | **95** | **0.2948** | **-0.004** |
 | **99** | **0.2899** | **-0.005** ← *Mínimo Absoluto V2* |
-| **100** | 0.2971 | +0.007 *(saturación confirmada)* |</center>
+| **100** | 0.2971 | +0.007 *(saturación confirmada)* |
 
-<center>![Curva de Convergencia V2](assets_informe/loss_curve.png)</center>
+</div>
 
-<center>![Dinámica del Cosine Annealing y Warm Restarts](assets_informe/GraficaCoseine_Annealing.png)</center>
+<p align="center">
+  <img src="assets_informe/loss_curve.png" alt="Curva de Convergencia V2" width="80%"/>
+</p>
+
+<p align="center">
+  <img src="assets_informe/GraficaCoseine_Annealing.png" alt="Cosine Annealing" width="80%"/>
+</p>
 
 *Figura: Comportamiento del Learning Rate (línea azul) forzando el escape de mínimos locales, propiciando la caída asintótica de la pérdida (línea roja).*
 
