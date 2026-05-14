@@ -92,10 +92,12 @@ def train_dynamic_v3(
     # El muestreador extrae parches de 128x128x128.
     # label_probabilities={0: 0.1, 1: 0.9} significa que el 90% de las veces
     # el parche estará centrado en un hueso (clase 1).
+    # 95% de los parches estarán centrados en vóxeles de hueso (clase 1)
+    # Esto elimina los spikes de loss=1.0 causados por parches de fondo puro
     sampler = tio.data.LabelSampler(
         patch_size=patch_size, 
         label_name='label', 
-        label_probabilities={0: 0.1, 1: 0.9}
+        label_probabilities={0: 0.05, 1: 0.95}
     )
 
     # La Queue carga tomografías en RAM y les extrae parches en segundo plano
@@ -146,6 +148,8 @@ def train_dynamic_v3(
             Y_pred = model(X_batch)
             loss = criterion(Y_pred, Y_batch)
             loss.backward()
+            # Gradient clipping: evita gradientes explosivos en la fase de LR máximo
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             scheduler.step() # El scheduler avanza en cada batch en OneCycleLR
             

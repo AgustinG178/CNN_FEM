@@ -1,0 +1,10 @@
+# BoneFlow V4 - Dependencias para Google Cloud VM
+# Instalar con: pip install -r cloud/requirements_v4.txt
+
+torch>=1.13.0
+torchio>=0.18.0
+nibabel==3.2.2
+numpy>=1.19.0
+matplotlib>=3.4.0
+tqdm>=4.62.0
+SimpleITK>=2.1.0

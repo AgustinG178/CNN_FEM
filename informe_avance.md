@@ -107,6 +107,26 @@ La eficacia matemática de esta maniobra quedó demostrada de inmediato: al reto
 | **99** | **0.2899** | **-0.005** ← *Mínimo Absoluto V2* |
 | **100** | 0.2971 | +0.007 *(saturación confirmada)* |
 
+**Convergencia V3 (TotalSegmentator — 1228 pacientes)**
+| Época | Dice Loss | Dice Score est. | LR | Evento |
+| :---: | :---: | :---: | :---: | :--- |
+| **1** | 0.652 | ~35% | 4.0e-05 | Inicio |
+| **4** | 0.386 | ~61% | 5.5e-04 | Descenso inicial |
+| **8** | 0.357 | ~64% | 1.0e-03 | LR en pico máximo |
+| **9** | 0.202 | ~80% | 9.98e-04 | ⚡ Caída crítica — superó V2 |
+| **10** | 0.154 | ~84.5% | 9.90e-04 | 1° Mínimo histórico |
+| **12** | 0.153 | ~84.7% | 9.62e-04 | Nuevo mínimo |
+| **13** | 0.123 | ~87.7% | 9.41e-04 | Nuevo mínimo |
+| **15** | **0.077** | **~92.3%+** | **8.86e-04** | 🏆 **Mínimo Absoluto** |
+| **16** | 0.126 | ~87.4% | 8.54e-04 | Rebote (refinando casos complejos) |
+| **17** | 0.092 | ~90.8% | 8.17e-04 | Consolidación por debajo del 0.10 |
+
+> **Validación externa (6 pacientes nunca vistos, época 10):** Dice promedio = **90.3%**
+> Mejor caso individual (s0250): **96.2%** · Peor caso (s1041): 75.7%
+> Proyección época 40: $\mathcal{L}_{Dice} \in [0.020, 0.040]$ → Dice Score estimado **96–98%**
+
+
+
 </div>
 
 <p align="center">
@@ -159,6 +179,20 @@ Extraer parches 3D en disco para 1200 pacientes habría requerido múltiples Ter
 *   **AdamW:** Se abandonó el optimizador Adam clásico. AdamW desacopla la regularización L2 (*Weight Decay*), castigando los pesos del modelo de forma analíticamente correcta para evitar la saturación ante la abismal cantidad de nueva información.
 *   **OneCycleLR:** Se reemplazó el lento *Cosine Annealing* por un planificador dinámico de PyTorch que incrementa brutalmente la tasa de aprendizaje al inicio para salir de mínimos locales, y la aniquila hacia el final. Esto permitirá que la red converja de forma absoluta en **solo 40 épocas**, procesando terabytes de datos en una fracción del tiempo estimado.
 
+**Progreso de Convergencia V3 (en curso)**
+<div align="center">
+
+| Época | Dice Loss Promedio | Equivalente en V2 | Batch mínimo |
+| :---: | :---: | :---: | :---: |
+| **1** | 0.652 | Época 1 | 0.223 |
+| **2** | 0.460 | Época ~63 | 0.051 (94.8%!) |
+| **3** | 0.412 | Época ~65 | 0.053 (94.7%!) |
+| **4** | **0.386** | **Época ~67** | **0.046 (95.4%!) 🏆** |
+
+</div>
+
+> El LR todavía está en `3.36e-04` — solo al **33%** del pico de `1e-03`. La explosión definitiva del *OneCycleLR* viene en las Épocas 6-8.
+
 ---
 
 ## 6. Ecosistema Clínico: BoneFlow Web App
@@ -174,7 +208,7 @@ Cada vez que un médico valide o corrija una tomografía en la App, ese estudio 
 ---
 **Estatus Actual:** 
 1. **Entrenamiento V2:** ✅ COMPLETADO. Mínimo absoluto: **Dice Loss = 0.2899 (Época 99) → Dice Score ~71%**. Convergencia verificada: las últimas 10 épocas oscilaron dentro de una banda de ±0.015, confirmando saturación del mínimo global con 61 pacientes.
-2. **Entrenamiento V3 (Industrial):** EN EJECUCIÓN 🟢. Procesando 1228 pacientes con parches 64³ dinámicos en el clúster (AdamW + OneCycleLR). Estimación de finalización: ~7-8 días.
+2. **Entrenamiento V3 (Industrial):** EN EJECUCIÓN 🟢. Procesando 1228 pacientes mediante *Parcheo Dinámico* en el clúster (AdamW + OneCycleLR). **Época 8/40 — Loss: 0.357 — LR alcanzó su pico máximo (1.00e-03). Fase de descenso coseno iniciada.** Estimación de finalización: ~7-8 días.
 
 ---
 
