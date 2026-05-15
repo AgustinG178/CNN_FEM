@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import glob
 import torch
@@ -11,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-# Importamos la red, la pérdida y el nuevo optimizador SAM
+# Importamos la red, la funcion de perdida y el nuevo optimizador SAM
 from src.neural_manifold.unet_topology import UNet3D
 from src.neural_manifold.dataset_pde import FocalDiceLoss
 from src.optimizers.sam import SAM
