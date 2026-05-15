@@ -18,11 +18,11 @@ from src.neural_manifold.dataset_pde import FocalDiceLoss
 from src.optimizers.sam import SAM
 
 def train_v31_sam(
-    data_dir: str,
-    epochs: int = 40,
-    max_lr: float = 1e-3,
-    batch_size: int = 2,
-    patch_size: int = 128  # Usamos 128 para igualar la calidad de V3.0
+    data_dir,
+    epochs=40,
+    max_lr=1e-3,
+    batch_size=2,
+    patch_size=128  # Usamos 128 para igualar la calidad de V3.0
 ):
     version_id = "v3.1_SAM_OneCycle"
     output_dir = f"data/03_models/{version_id}"
@@ -52,7 +52,22 @@ def train_v31_sam(
 
     print(f"[*] Cargando {len(subjects)} pacientes...", flush=True)
 
-    # Transformaciones y Sampler
+    # Transformación personalizada para asegurar que la imagen no sea mas chica que el parche
+    class EnsureMinShape(tio.Transform):
+        def __init__(self, min_shape):
+            super().__init__()
+            self.min_shape = np.array(min_shape)
+        def apply_transform(self, subject):
+            shape = np.array(subject.spatial_shape)
+            if np.any(shape < self.min_shape):
+                pad_size = np.maximum(0, self.min_shape - shape)
+                pad_left = pad_size // 2
+                pad_right = pad_size - pad_left
+                padding = (pad_left[0], pad_right[0], pad_left[1], pad_right[1], pad_left[2], pad_right[2])
+                subject = tio.Pad(padding)(subject)
+            return subject
+
+    # Transformación para unificar matrices espaciales
     class EnforceConsistentAffine(tio.Transform):
         def apply_transform(self, subject):
             subject['label'] = tio.LabelMap(tensor=subject['label'].data, affine=subject['ct'].affine)
@@ -60,6 +75,7 @@ def train_v31_sam(
 
     transform = tio.Compose([
         EnforceConsistentAffine(),
+        EnsureMinShape((patch_size, patch_size, patch_size)),
         tio.RandomNoise(std=0.05),
         tio.RandomFlip(axes=(0,))
     ])

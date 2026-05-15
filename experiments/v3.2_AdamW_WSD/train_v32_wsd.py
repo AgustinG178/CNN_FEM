@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import glob
 import torch
@@ -11,17 +12,17 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-# Importamos la red, la pérdida y el nuevo scheduler WSD
+# Importamos la red, la funcion de perdida y el nuevo scheduler WSD
 from src.neural_manifold.unet_topology import UNet3D
 from src.neural_manifold.dataset_pde import FocalDiceLoss
 from src.schedulers.wsd import WSDScheduler
 
 def train_v32_wsd(
-    data_dir: str,
-    epochs: int = 40,
-    max_lr: float = 1e-3,
-    batch_size: int = 2,
-    patch_size: int = 128
+    data_dir,
+    epochs=40,
+    max_lr=1e-3,
+    batch_size=2,
+    patch_size=128
 ):
     version_id = "v3.2_AdamW_WSD"
     output_dir = f"data/03_models/{version_id}"
@@ -46,7 +47,30 @@ def train_v32_wsd(
             subject = tio.Subject(ct=tio.ScalarImage(ct_path), label=tio.LabelMap(mask_path))
             subjects.append(subject)
 
+    # Proteccion contra imagenes mas chicas que el parche
+    class EnsureMinShape(tio.Transform):
+        def __init__(self, min_shape):
+            super().__init__()
+            self.min_shape = np.array(min_shape)
+        def apply_transform(self, subject):
+            shape = np.array(subject.spatial_shape)
+            if np.any(shape < self.min_shape):
+                pad_size = np.maximum(0, self.min_shape - shape)
+                pad_left = pad_size // 2
+                pad_right = pad_size - pad_left
+                padding = (pad_left[0], pad_right[0], pad_left[1], pad_right[1], pad_left[2], pad_right[2])
+                subject = tio.Pad(padding)(subject)
+            return subject
+
+    # Transformacion para unificar matrices espaciales
+    class EnforceConsistentAffine(tio.Transform):
+        def apply_transform(self, subject):
+            subject['label'] = tio.LabelMap(tensor=subject['label'].data, affine=subject['ct'].affine)
+            return subject
+
     transform = tio.Compose([
+        EnforceConsistentAffine(),
+        EnsureMinShape((patch_size, patch_size, patch_size)),
         tio.RandomNoise(std=0.05),
         tio.RandomFlip(axes=(0,))
     ])

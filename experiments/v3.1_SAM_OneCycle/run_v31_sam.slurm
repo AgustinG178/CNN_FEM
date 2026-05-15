@@ -2,8 +2,7 @@
 #SBATCH --job-name=boneflow_v3.1_sam
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=12
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=32
 #SBATCH --time=120:00:00
 #SBATCH --output=experiments/v3.1_SAM_OneCycle/v3.1_training_%j.log
 #SBATCH --error=experiments/v3.1_SAM_OneCycle/v3.1_training_%j.err
@@ -20,7 +19,7 @@ echo "============================================================"
 # PYTHONPATH al root para que los imports de 'src' funcionen
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-python experiments/v3.1_SAM_OneCycle/train_v31_sam.py
+python3 experiments/v3.1_SAM_OneCycle/train_v31_sam.py
 
 echo "============================================================"
 echo " Finalización: $(date)"
